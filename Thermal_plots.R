@@ -22,13 +22,7 @@ library(scales) # To plot stacked bar as percentages
 library(lme4) # Running multilevel mixed models
 library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
-
-
-#library(tidyverse)
 #library(viridis) # Source of the colors used here; but manually coded
-
-library(emmeans)
-library(car) ## To check the distribution of the data
 
 #### Set working directory and read in files####
 wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")

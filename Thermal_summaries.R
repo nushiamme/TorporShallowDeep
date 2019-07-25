@@ -74,7 +74,7 @@ for(i in bird.folders.all) {
   }
 }
 
-## Compiling all the RDS files into a single list, so you can summarize the temperatures
+## Compiling all the RDS files into a single list, to then summarize the temperatures
 all_thermal <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
 colnames(all_thermal) <- bird.folders.all
 all_amb <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
