@@ -1,5 +1,6 @@
 #### Code description ####
-## Shallow-deep torpor paper: script to compile raw (exported) IR csv files into manageable thermal summarized files
+## Shallow-deep torpor paper: script to compile raw (exported) IR csv files into manageable thermal summarized files, 
+## and to re-make the RDS files used in the out_full functions and data frames in the Thermal_plots_models.R script
 ## Paper authors: A Shankar, INH Cisneros, S Thompson, CH Graham, DR Powers
 ## Code author: A Shankar
 ## Contact: nushiamme<at>gmail<dot>com
@@ -95,7 +96,12 @@ for(i in bird.folders.all) {
   all_amb[[paste(i)]] <- c(var2, rep(NA,120-n))
 }
 
+
 m.all_thermal <- melt(all_thermal, na.rm=T)
+## Change Indiv_IDs to match latest convention names for MAHU -> RIHU and BLHU -> BLUH
+m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Individual) ## Changing species code for RIHU from MAHU to RIHU
+m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
+
 setwd("E:/Google Drive/IR_2018_csv/Data")
 write.csv(m.all_thermal,file = "Thermal_maxes.csv")
 ## m.all_amb <- melt(all_amb,na.rm=T) ## If you want just ambient temperatures

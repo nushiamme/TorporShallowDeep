@@ -80,7 +80,8 @@ bird.folders.all <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607"
 out_all <- data.frame(matrix(ncol = 6, nrow=109*length(bird.folders.all)))
 names(out_all) <- c("Indiv_ID", "Date", "Time", "variable", "value", "Hour")
 for(i in bird.folders.all) {
-  setwd(paste0(wd, "/", i))
+  wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data", "RDS_files")
+  setwd(paste0(wd2, "/", i))
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
   out_all <- rbind(out,out_all)
 }
