@@ -17,7 +17,7 @@ The code is organized into 2 scripts, for
 1. Reprocessing the thermal summaries if needed (time consuming, so these are already in a file "Thermal_maxes.csv")
 2. File for running all the models and producing figures. Figures not listed here were made in Illustrator (Figure 1) or Powerpoint (Figure 3).
 
--   **Thermal\_summaries.R** - Needs all the individual csv files in the folder *"RDS_files"*; can re-make the *"Thermal_maxes.csv"* needed below. But this script is **very** time consuming; do not run unless you want to re-process exported csv's again. The compressed file of the csv's is 216 MB; uncompressed it is about 1.7GB.
+-   **Thermal\_summaries.R** - Needs all the individual csv files in the zip folder *"RDS_Data.zip"*; can re-make the *"Thermal_maxes.csv"* needed below. But this script is **very** time consuming; do not run unless you want to re-process exported csv's again. The compressed file of the csv's is 216 MB; uncompressed it is about 1.7GB.
 
 -   **Thermal\_plots\_models.R** - Needs input files *"Thermal_maxes.csv"*", *"Category_thresholds.csv"*, *"Interpolated_Thermal.csv"*, *"Category_percentages.csv"*, *"Bird_masses.csv"*, and all the *"..._summ.RDS"* files in the compressed folder *"RDS_Data.zip"*; contains code for running all models and producing these figures and all tables:
     -   *Figure 2*: Single RIHU individual's temperatures plotted over the course of a night. Points were modified for clarity in Illustrator. 3D surface plots were constructed in ImageJ and added on in Illustrator/powerpoint
