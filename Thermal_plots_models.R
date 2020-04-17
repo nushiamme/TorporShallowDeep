@@ -28,7 +28,7 @@ library(lattice) ## qqplot to look at lmer model residuals
 wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
 setwd(wd)
 # Can remake this thermal melted file if needed by running the Thermal_summaries script
-thermal_maxes_melted <- read.csv("E:\\Google Drive\\IR_2018_csv\\Thermal_maxes.csv") ## Raw temperatures
+thermal_maxes_melted <- read.csv("E:\\Google Drive\\Shallow_Torpor\\Data\\Thermal_maxes.csv") ## Raw temperatures
 
 # Other files
 categories <- read.csv("Category_thresholds.csv")
@@ -80,7 +80,7 @@ bird.folders.all <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607"
 out_all <- data.frame(matrix(ncol = 6, nrow=109*length(bird.folders.all)))
 names(out_all) <- c("Indiv_ID", "Date", "Time", "variable", "value", "Hour")
 for(i in bird.folders.all) {
-  wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data", "RDS_files")
+  wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
   setwd(paste0(wd2, "/", i))
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
   out_all <- rbind(out,out_all)
