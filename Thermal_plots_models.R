@@ -42,9 +42,9 @@ masses <- read.csv("Bird_masses.csv")
 my_theme <- theme_classic(base_size = 30) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
-#my_theme2 <- theme_classic(base_size = 30) + 
- # theme(axis.line = element_line(colour = "black"),
-  #      text=element_text(family="Cambria"))
+my_theme2 <- theme_classic(base_size = 15) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
 
 ## Axis labels
 Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
@@ -342,12 +342,64 @@ ggplot(out_full, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=
   guides(colour = guide_legend(override.aes = list(size=4)))
 
 
+## Reviewer figure
+##Structuring time
+birdsTime <- out_full$Time
+TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
+TimeOrder2 <- seq(from = 0100, to = 0559, by = 1)
+TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
+TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
+
+Time_unordered<- as.factor(format(seq.POSIXt(as.POSIXct(Sys.Date()), as.POSIXct(Sys.Date()+1), by = "1 min"),"%H%M", tz="GMT"))
+
+TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatch=NA)]))
+
+
+out_full$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
+
+ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_ID, scales = "free_x") + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+  #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
+
+# All individuals in one plot
+ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+## Faceted by individual
+ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + 
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+# All individuals in one plot
+ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+## Faceted by individual
+ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+# All individuals in one plot
+ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+
 ## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
 ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
   facet_grid(.~Species, scales = "free_x",space = "free_x") +
   ylab(Temp.lab) + xlab("Individual") + 
   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
-  scale_color_manual(values=my_colors2) +
+  scale_color_manual(values=my_colors) +
   guides(colour = guide_legend(override.aes = list(size=3.5))) +
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
         legend.key.height = unit(3, 'lines'))
@@ -359,7 +411,7 @@ m.categ$variable <- revalue(m.categ$variable, c("Shallow_torpor"="Shallow Torpor
 ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
-  scale_fill_manual(values=my_colors2, name="Category") +
+  scale_fill_manual(values=my_colors, name="Category") +
   scale_y_continuous(labels = percent_format()) +
   guides(colour = guide_legend(override.aes = list(size=3))) +
   theme(legend.key.height = unit(3, 'lines'))
