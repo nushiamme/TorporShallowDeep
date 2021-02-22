@@ -358,41 +358,72 @@ TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatc
 out_full$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
 
 ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
-  facet_wrap(.~Indiv_ID, scales = "free_x") + my_theme2 +
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines')) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
   #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
 
 # All individuals in one plot
 ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
 
 ## Faceted by individual
 ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   facet_wrap(.~Indiv_numeric, scales = "free_x") + 
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
 
 # All individuals in one plot
 ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab)
-
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
+  
 ## Faceted by individual
 ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
 
 # All individuals in one plot
 ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
+        legend.key.height = unit(3, 'lines'))
+
+
+## INCORPORATE change into text and models - Changed MAHU02 from shallow to deep torpor
+## Changed thresholds from 30-30 to 30-30-29-29-26-26
+
+## Individual MAHU02
+ggplot(out_full[out_full$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
 
+## Individual BCHU01, changed threshold for transition
+## From 29	29	27	27	12	12
+## To 
+ggplot(out_full[out_full$Indiv_ID=="BCHU01",], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+### Older analyses (before Feb 2021)
 
 ## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
 ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
