@@ -13,6 +13,7 @@
 
 
 #### Read in packages ####
+library(here)
 library(plyr) ## Load this before loading dplyr (so that some functions in dplyr aren't masked)
 library(dplyr) ## for summarize 
 library(reshape2) ## for dcast() function 
@@ -25,16 +26,16 @@ library(lattice) ## qqplot to look at lmer model residuals
 #library(viridis) # Source of the colors used here; but manually coded
 
 #### Set working directory and read in files####
-wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
-setwd(wd)
-# Can remake this thermal melted file if needed by running the Thermal_summaries script
-thermal_maxes_melted <- read.csv("E:\\Google Drive\\Shallow_Torpor\\Data\\Thermal_maxes.csv") ## Raw temperatures
+#wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data") ## Remove this now that I'm in an .Rproj
+#setwd(wd)
+# Can remake this thermal melted file if needed by running the Thermal_summaries.R script
+thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
 
 # Other files
-categories <- read.csv("Category_thresholds.csv")
-interpolated <- read.csv("Interpolated_Thermal.csv") ## Temperatures interpolated to 1 minute
-categ_percentage <- read.csv("Category_percentages.csv")
-masses <- read.csv("Bird_masses.csv")
+categories <- read.csv(here("Data", "Category_thresholds.csv"))
+interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 1 minute
+categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
+masses <- read.csv(here("Data", "Bird_masses.csv"))
 
 
 #### General functions ####
@@ -341,8 +342,40 @@ ggplot(out_full, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   guides(colour = guide_legend(override.aes = list(size=4)))
 
+## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
+ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
+  facet_grid(.~Species, scales = "free_x",space = "free_x") +
+  ylab(Temp.lab) + xlab("Individual") + 
+  #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
+  scale_color_manual(values=my_colors) +
+  guides(colour = guide_legend(override.aes = list(size=3.5))) +
+  theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
+        legend.key.height = unit(3, 'lines'))
 
-## Reviewer figure
+## Figure 6: Stacked bar for proportion of nighttime spent in each category per species
+## Figure 6a using original (non-model) interpolated values
+m.categ <- melt(categ_percentage, id.vars="Species", measure.vars = c("Normothermic", "Shallow_torpor", "Transition", "Torpor"))
+m.categ$variable <- revalue(m.categ$variable, c("Shallow_torpor"="Shallow Torpor", "Torpor"="Deep Torpor"))
+ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
+  #facet_grid(.~Species, scales = "free_x",space = "free_x") +
+  xlab("Species") + ylab("Percentages") +
+  scale_fill_manual(values=my_colors, name="Category") +
+  scale_y_continuous(labels = percent_format()) +
+  guides(colour = guide_legend(override.aes = list(size=3))) +
+  theme(legend.key.height = unit(3, 'lines'))
+
+
+## Figure 6b: Using predicted values
+ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
+  #facet_grid(.~Species, scales = "free_x",space = "free_x") +
+  xlab("Species") + ylab("Percentages") +
+  scale_fill_manual(values=my_colors, name="Category") +
+  scale_y_continuous(labels = percent_format()) +
+  guides(colour = guide_legend(override.aes = list(size=3))) +
+  theme(legend.key.height = unit(3, 'lines'))
+
+
+## Reviewer figure, Feb 2021
 ##Structuring time
 birdsTime <- out_full$Time
 TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
@@ -364,7 +397,7 @@ ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines')) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
-  #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
+#+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
 
 # All individuals in one plot
 ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
@@ -388,7 +421,7 @@ ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
-  
+
 ## Faceted by individual
 ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
@@ -423,36 +456,3 @@ ggplot(out_full[out_full$Indiv_ID=="BCHU01",], aes(Time2, Surf_Temp)) + my_theme
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
 
-### Older analyses (before Feb 2021)
-
-## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
-ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
-  facet_grid(.~Species, scales = "free_x",space = "free_x") +
-  ylab(Temp.lab) + xlab("Individual") + 
-  #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
-  scale_color_manual(values=my_colors) +
-  guides(colour = guide_legend(override.aes = list(size=3.5))) +
-  theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
-        legend.key.height = unit(3, 'lines'))
-
-## Figure 6: Stacked bar for proportion of nighttime spent in each category per species
-## Figure 6a using original (non-model) interpolated values
-m.categ <- melt(categ_percentage, id.vars="Species", measure.vars = c("Normothermic", "Shallow_torpor", "Transition", "Torpor"))
-m.categ$variable <- revalue(m.categ$variable, c("Shallow_torpor"="Shallow Torpor", "Torpor"="Deep Torpor"))
-ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
-  #facet_grid(.~Species, scales = "free_x",space = "free_x") +
-  xlab("Species") + ylab("Percentages") +
-  scale_fill_manual(values=my_colors, name="Category") +
-  scale_y_continuous(labels = percent_format()) +
-  guides(colour = guide_legend(override.aes = list(size=3))) +
-  theme(legend.key.height = unit(3, 'lines'))
-
-
-## Figure 6b: Using predicted values
-ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
-  #facet_grid(.~Species, scales = "free_x",space = "free_x") +
-  xlab("Species") + ylab("Percentages") +
-  scale_fill_manual(values=my_colors, name="Category") +
-  scale_y_continuous(labels = percent_format()) +
-  guides(colour = guide_legend(override.aes = list(size=3))) +
-  theme(legend.key.height = unit(3, 'lines'))
