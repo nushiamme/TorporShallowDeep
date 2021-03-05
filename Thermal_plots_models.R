@@ -25,9 +25,7 @@ library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
 #library(viridis) # Source of the colors used here; but manually coded
 
-#### Set working directory and read in files####
-#wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data") ## Remove this now that I'm in an .Rproj
-#setwd(wd)
+#### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
 thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
 
@@ -375,7 +373,8 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
   theme(legend.key.height = unit(3, 'lines'))
 
 
-## Reviewer figure, Feb 2021
+#### New figures, from Reviewer suggestion, Feb 2021 ####
+
 ##Structuring time
 birdsTime <- out_full$Time
 TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
