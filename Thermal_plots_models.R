@@ -389,6 +389,17 @@ TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatc
 
 out_full$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
 
+## Try to fit interpolated version of the same thing
+ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines')) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+
+
 ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
@@ -429,6 +440,19 @@ ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
+ 
+## Trying out a cubic spline
+fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = out_full[out_full$Indiv_numeric==22,])
+## Faceted by individual
+ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines')) +
+  points(age.grid,predict(fit,newdata = list(age=age.grid)),col="darkgreen",lwd=2,type="l")
+
 
 # All individuals in one plot
 ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
