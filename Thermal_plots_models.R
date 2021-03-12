@@ -6,7 +6,7 @@
 
 ## Code layout:
 ## First read in packages and data files, then general functions
-## Then process files to run models
+## Then run models
   ## First of surface temperature ~ ambient temperature, and categories
   ## Then of proportion of time spent per category
 ## Then Figures
@@ -24,9 +24,11 @@ library(lme4) # Running multilevel mixed models
 library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
 #library(viridis) # Source of the colors used here; but manually coded
+library(stringr) ## To pad a cell with zeros (str_pad function)
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
+here <- here::here
 thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
 
 # Other files
@@ -34,6 +36,7 @@ categories <- read.csv(here("Data", "Category_thresholds.csv"))
 interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 1 minute
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
+therm_all <- read.csv(here("Data", "All_data.csv"))
 
 
 #### General functions ####
@@ -68,105 +71,10 @@ my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
 #"#f9c74f", "#90be6d", "#43aa8b", "#4d908e", "#577590", "#277da1")
 
 
-#### Models ####
-
-#### Processing data to run surface vs ambient temperature models ####
-
-## First read in the bird IDs
-#### Bird folders ####
-bird.folders.2018 <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607", "BCHU05_0607",
-                       "BLHU01_0521", "BLHU03_0522", "BLHU04_0523", "BLHU05_0523", "BLHU06_0526", "BLHU07_0529", "BLHU08_0601", 
-                       "BLHU09_0603", "BLHU12_0605", "BLHU13_0605", 
-                       "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606")
-
-bird.folders.2017 <- c("BC01_0610", "BC02_0612", "BC03_0617",
-                       "BL01_0610", "BL02_0612", "BL03_0614", "BL04_0615",
-                       "MA02_0611", "MA05_0615", "MA06_0616", "MA07_0617", "MA08_0619")
-
-bird.folders.all <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607", #"BCHU05_0607",
-                      "BLHU01_0521", "BLHU03_0522", "BLHU04_0523", "BLHU05_0523", "BLHU06_0526", "BLHU07_0529", "BLHU08_0601", 
-                      "BLHU09_0603", "BLHU12_0605", "BLHU13_0605", 
-                      "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606",
-                      "BC01_0610", "BC02_0612", "BC03_0617",
-                      "BL01_0610", "BL02_0612", "BL03_0614", "BL04_0615",
-                      "MA02_0611", "MA05_0615", "MA06_0616", "MA07_0617", "MA08_0619")
-
-## Stacking all the individual birds' data, keeping all melted columns from earlier (hour, min, max, etc.)
-out_all <- data.frame(matrix(ncol = 6, nrow=109*length(bird.folders.all)))
-names(out_all) <- c("Indiv_ID", "Date", "Time", "variable", "value", "Hour")
-for(i in bird.folders.all) {
-  wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
-  setwd(paste0(wd2, "/", i))
-  out<- readRDS(file=paste(i, "_summ.rds", sep=""))
-  out_all <- rbind(out,out_all)
-}
-dim(out_all) ## Check dimensions, should be ~ 9909 by 6
-out_all <- out_all[complete.cases(out_all),] ## Remove rows with NAs
-dim(out_all) ## Check dimensions, now 6309 by 6
-out_amb <- out_all[out_all$variable=="Min",] ## Make a separate data frame with just minimum (~= ambient) values
-#out_mean <- out_all[out_all$variable=="Mean",] ## Make a separate data frame with just mean Ts values
-out_max <- out_all[out_all$variable=="Max",] ## Make a separate data frame with just maximum (~= surface) values
-out_full <- merge(out_amb,out_max, by = c("Indiv_ID", "Date", "Time", "Hour")) ## Merge the two
-out_full <- subset(out_full, select = -c(variable.x, variable.y)) ## Remove unnecessary columns
-names(out_full) <- c("Indiv_ID", "Date", "Time", "Hour", "Amb_Temp", "Surf_Temp")
-out_full$Year <- 0 ## Making a year column to make Indiv_ID in out_full match individual column in categories DF
-head(out_full) 
-out_full$pasted <- paste(out_full$Indiv_ID, "_", out_full$Date, sep="")
-out_full$Year[which(!is.na(match(out_full$pasted,bird.folders.2017)))] <- 17
-out_full$Year[which(!is.na(match(out_full$pasted,bird.folders.2018)))] <- 18
-out_full$Indiv_ID <- lapply(out_full$Indiv_ID, function(x) {
-  gsub("BC0", "BCHU0", x)
-})
-out_full$Indiv_ID <- lapply(out_full$Indiv_ID, function(x) {
-  gsub("BL0", "BLHU0", x)
-})
-out_full$Indiv_ID <- lapply(out_full$Indiv_ID, function(x) {
-  gsub("MA0", "MAHU0", x)
-})
-out_full$pasted <- paste(out_full$Indiv_ID, "_", out_full$Date, out_full$Year, sep="")
-out_full$pasted <- gsub('MA', 'RI', out_full$pasted) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
-out_full$pasted <- gsub('BLHU', 'BLUH', out_full$pasted) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
-head(out_full) ## Check that the years match the separate bird.folders above
-## Loops to fill in a "Category" column in the out_full dataset so that each surface temperature is 
-## assigned a category according to individual thresholds laid out in the manually-assigned categories DF
-## Great opportunity for machine learning here, but manual for now!
-
-out_full$Category <- 0
-
-for(i in 1:nrow(out_full)) {
-  categ <- categories[categories$Individual==out_full$pasted[i],]
-  if(out_full$Surf_Temp[i] > categ$Normo_min) {
-    out_full$Category[i] <- "Normothermic"
-  } else if(!is.na(categ$Shallow_min) & out_full$Surf_Temp[i] > categ$Shallow_min) {
-    out_full$Category[i] <- "Shallow Torpor"
-  } else if(is.na(categ$Shallow_min) & !is.na(categ$Shallow_max) & out_full$Surf_Temp[i] < categ$Shallow_max) {
-    out_full$Category[i] <- "Shallow Torpor"
-  } else if(!is.na(categ$Transition_min) & out_full$Surf_Temp[i] > categ$Transition_min) {
-    out_full$Category[i] <- "Transition"
-  } else if(is.na(categ$Transition_min) & !is.na(categ$Transition_max) & out_full$Surf_Temp[i] < categ$Transition_max) {
-    out_full$Category[i] <- "Transition"
-  } else if(!is.na(categ$Torpor_max) & out_full$Surf_Temp[i] < categ$Torpor_max) {
-    out_full$Category[i] <- "Deep Torpor"
-  }
-}
-
-## Add a column for capture masses
-out_full$Cap_mass <- 0
-
-for(i in 1:nrow(out_full)) {
-  out_full$Cap_mass[i] <- masses$Capture_mass_g[masses$Indiv_ID==out_full$pasted[i]]
-}
-
-## Running an ancova on Surface ~ Ambient temperature
-out_full$Indiv_numeric <- cumsum(!duplicated(out_full$pasted)) ## Making individual column numeric for the ancova, but this turns out to be unnecessary
-out_full$Species <- substr(out_full$Indiv_ID, 1, 4) ## Making a species column
-out_full$Species_numeric <- cumsum(!duplicated(out_full$Species))
-
-
 #### Models of Surface temperature vs. ambient temperature ####
 ## Not including Category as a covariate, just doing a linear model of surface vs. ambient temperatures
 ## Terrible model!
-mod.surf_amb_noCateg <- lm(Surf_Temp~Amb_Temp, data=out_full)
+mod.surf_amb_noCateg <- lm(Surf_Temp~Amb_Temp, data=therm_all)
 summary(mod.surf_amb_noCateg)
 plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 
@@ -174,7 +82,7 @@ plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 ## (Amb_Temp|Categ) allows slopes and intercepts to vary by category
 
 ## First, multilevel model with random intercepts and fixed slope for all categories
-mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + (1|Category), data=out_full)
+mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + (1|Category), data=therm_all)
 summary(mod_mixed)
 coef(mod_mixed) ## Useful to see all the slopes and intercepts
 plot(mod_mixed) ## Definitely many clusters of points
@@ -182,20 +90,20 @@ plot(ranef(mod_mixed)) ## plotting random effects of model
 plot(residuals(mod_mixed)) ## plot residuals of model
 
 ## Random intercepts and random slopes, no species in this equation
-mod_mixed_2 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category), data=out_full)
+mod_mixed_2 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category), data=therm_all)
 summary(mod_mixed_2)
 coef(mod_mixed_2) 
 plot(mod_mixed_2)
 
 ## Accounting for species, Random intercepts and random slopes
-mod_mixed_3 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + (Amb_Temp|Species_numeric), data=out_full)
+mod_mixed_3 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + (Amb_Temp|Species_numeric), data=therm_all)
 summary(mod_mixed_3)
 coef(mod_mixed_3)
 plot(mod_mixed_3)
 
 ## Same as above but now including mass.
 ## This is the final full (and best) model
-mod_mixed_4 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + Cap_mass + (Amb_Temp|Species_numeric), data=out_full)
+mod_mixed_4 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + Cap_mass + (Amb_Temp|Species_numeric), data=therm_all)
 summary(mod_mixed_4)
 coef(mod_mixed_4)
 plot(mod_mixed_4)
@@ -206,7 +114,7 @@ qqmath(~resid(mod_mixed_4)) ## Much better!!
 ## Gives identical results to above. So Indiv ID doesn't make a difference
 ## Ignore.
 mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + Cap_mass +
-                      (Amb_Temp|Species_numeric/Indiv_numeric), data=out_full)
+                      (Amb_Temp|Species_numeric/Indiv_numeric), data=therm_all)
 summary(mod_mixed_5)
 coef(mod_mixed_5)
 plot(mod_mixed_5)
@@ -343,9 +251,9 @@ for(i in single) {
 
 
 ## Figure 4: Surface vs ambient temperature, with one linear model fitted to each category
-out_full$Category <- factor(out_full$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+#therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
-ggplot(out_full, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
+ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
   scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
   scale_colour_manual(values=my_colors) +
   geom_smooth(aes(group=Category),method='lm') +
@@ -392,7 +300,7 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
 #### New figures, from Reviewer suggestion, Feb 2021 ####
 
 ##Structuring time
-birdsTime <- out_full$Time
+birdsTime <- therm_all$Time
 TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
 TimeOrder2 <- seq(from = 0100, to = 0559, by = 1)
 TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
@@ -403,10 +311,10 @@ Time_unordered<- as.factor(format(seq.POSIXt(as.POSIXct(Sys.Date()), as.POSIXct(
 TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatch=NA)]))
 
 
-out_full$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
+therm_all$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
 
 ## Try to fit interpolated version of the same thing
-ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -416,7 +324,7 @@ ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) +
 
 
 
-ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -426,14 +334,14 @@ ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) +
 #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
 
 # All individuals in one plot
-ggplot(out_full[out_full$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
 ## Faceted by individual
-ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   facet_wrap(.~Indiv_numeric, scales = "free_x") + 
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -442,14 +350,14 @@ ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
         legend.key.height = unit(3, 'lines'))
 
 # All individuals in one plot
-ggplot(out_full[out_full$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
 ## Faceted by individual
-ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -458,9 +366,9 @@ ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) +
         legend.key.height = unit(3, 'lines'))
  
 ## Trying out a cubic spline
-fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = out_full[out_full$Indiv_numeric==22,])
+fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = therm_all[therm_all$Indiv_numeric==22,])
 ## Faceted by individual
-ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -471,7 +379,7 @@ ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) +
 
 
 # All individuals in one plot
-ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
@@ -482,7 +390,7 @@ ggplot(out_full[out_full$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
 ## Changed thresholds from 30-30 to 30-30-29-29-26-26
 
 ## Individual MAHU02
-ggplot(out_full[out_full$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
@@ -490,7 +398,7 @@ ggplot(out_full[out_full$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2
 ## Individual BCHU01, changed threshold for transition
 ## From 29	29	27	27	12	12
 ## To 
-ggplot(out_full[out_full$Indiv_ID=="BCHU01",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Indiv_ID=="BCHU01",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
