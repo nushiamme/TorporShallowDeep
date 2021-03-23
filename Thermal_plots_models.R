@@ -20,6 +20,7 @@ library(reshape2) ## for dcast() function
 library(MASS) ## To check the distribution of the data and run glm.nb
 library(ggplot2)
 library(scales) # To plot stacked bar as percentages
+library(nlme) ## for gls model to compare them with lmer
 library(lme4) # Running multilevel mixed models
 library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
@@ -54,27 +55,10 @@ Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
 ## Standardize the color scheme
 my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
 
-## From coolers website
-#my_colors2 <- c("#efdb00", "#3d5887", "#032b43", "#a0b9c6", "#b24c63")
-#my_colors3 <- c("#ca054d", "#ffd400", "#032b43", "#7b9e89", "#1c448e")
-#my_colors4 <- c("#ca054d", "#ffd400", "#032b43", "#f75c03", "#1c448e")
-#my_colors5 <- c("#004e64", "#ffba08", "#73a580", "#f786aa", "#685369")
-#my_colors6 <- c("#004e64", "#ffba08", "#f7b2bd", "#c60f7b", "#bbc7a4")
-#my_colors7 <- c("#ffe74c", "#508aa8", "#242f40", "#c60f7b", "#bbc7a4")
-#my_colors8 <- c("#7f7caf", "#fcbf49", "#171738", "#f71735", "#c9e4ca")
-#my_colors9 <- c("#5bba6f", "#297373", "#171738", "#9e4770", "#f8c630")
-#my_colors10 <- c("#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51")
-#my_gradient <- c("#823de9", "#7855ce", "#6e6eb2", "#648697", "#599e7c", "#4fb760", "#45cf45")
-#my_colors_green <- c("#cad2c5", "#84a98c", "#52796f", "#354f52", "#2f3e46")
-#my_colors11 <- c("#355070", "#6d597a", "#b56576", "#e56b6f", "#eaac8b")
-#my_col_rainbows <- c("#f94144", "#f3722c", "#f8961e", "#f9844a",
-#"#f9c74f", "#90be6d", "#43aa8b", "#4d908e", "#577590", "#277da1")
-
-
 #### Models of Surface temperature vs. ambient temperature ####
 ## Not including Category as a covariate, just doing a linear model of surface vs. ambient temperatures
 ## Terrible model!
-mod.surf_amb_noCateg <- lm(Surf_Temp~Amb_Temp, data=therm_all)
+mod.surf_amb_noCateg <- gls(Surf_Temp~Amb_Temp, data=therm_all)
 summary(mod.surf_amb_noCateg)
 plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 
@@ -82,7 +66,7 @@ plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 ## (Amb_Temp|Categ) allows slopes and intercepts to vary by category
 
 ## First, multilevel model with random intercepts and fixed slope for all categories
-mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + (1|Category), data=therm_all)
+mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + Category, data=therm_all)
 summary(mod_mixed)
 coef(mod_mixed) ## Useful to see all the slopes and intercepts
 plot(mod_mixed) ## Definitely many clusters of points
@@ -90,20 +74,20 @@ plot(ranef(mod_mixed)) ## plotting random effects of model
 plot(residuals(mod_mixed)) ## plot residuals of model
 
 ## Random intercepts and random slopes, no species in this equation
-mod_mixed_2 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category), data=therm_all)
+mod_mixed_2 <- glm(Surf_Temp ~ Amb_Temp + Category, data=therm_all)
 summary(mod_mixed_2)
 coef(mod_mixed_2) 
 plot(mod_mixed_2)
 
 ## Accounting for species, Random intercepts and random slopes
-mod_mixed_3 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + (Amb_Temp|Species_numeric), data=therm_all)
+mod_mixed_3 <- glm(Surf_Temp ~ Amb_Temp + Category + Species_numeric, data=therm_all)
 summary(mod_mixed_3)
 coef(mod_mixed_3)
 plot(mod_mixed_3)
 
 ## Same as above but now including mass.
 ## This is the final full (and best) model
-mod_mixed_4 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + Cap_mass + (Amb_Temp|Species_numeric), data=therm_all)
+mod_mixed_4 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=therm_all)
 summary(mod_mixed_4)
 coef(mod_mixed_4)
 plot(mod_mixed_4)
@@ -113,8 +97,7 @@ qqmath(~resid(mod_mixed_4)) ## Much better!!
 ## Accounting for individual and species, Random intercepts and random slopes.
 ## Gives identical results to above. So Indiv ID doesn't make a difference
 ## Ignore.
-mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + (Amb_Temp|Category) + Cap_mass +
-                      (Amb_Temp|Species_numeric/Indiv_numeric), data=therm_all)
+mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + (1|Species_numeric:Indiv_numeric), data=therm_all)
 summary(mod_mixed_5)
 coef(mod_mixed_5)
 plot(mod_mixed_5)
