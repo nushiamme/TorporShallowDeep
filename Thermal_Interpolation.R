@@ -6,6 +6,7 @@
 library(here)
 library(plyr)
 library(stringr) ## To pad a cell with zeros (str_pad function)
+library(segmented) ## Trying out a piecewise regression with this
 
 ## Read in file
 therm_all <- read.csv(here("Data", "All_data.csv"))
@@ -77,6 +78,25 @@ for(j in 1:length(unique(test$pasted))) {
     dataTest_interpol <- rbind(dataTest_interpol, interTemp) # add it to your df
   }
 }
+
+## Mar 23, testing out the segmented package
+
+set.seed(12)
+xx <- 1:100
+zz <- runif(100)
+yy <- 2 + 1.5*pmax(xx - 35, 0) - 1.5*pmax(xx - 70, 0) + 15*pmax(zz - .5, 0) + 
+  rnorm(100,0,2)
+dati <- data.frame(x = xx, y = yy, z = zz)
+out.lm <- lm(y ~ x, data = dati)
+o <- segmented(out.lm, seg.Z = ~x, psi = list(x = c(30,60)),
+               control = seg.control(display = FALSE)
+)
+dat2 = data.frame(x = xx, y = broken.line(o)$fit)
+
+library(ggplot2)
+ggplot(dati, aes(x = x, y = y)) +
+  geom_point() +
+  geom_line(data = dat2, color = 'blue')
 
 ## Check if there's any NAs. 
 sum(is.na(dataTest_interpol$Amb_Temp)) #Good if output is 0
