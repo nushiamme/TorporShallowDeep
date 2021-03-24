@@ -26,6 +26,7 @@ library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
 #library(viridis) # Source of the colors used here; but manually coded
 library(stringr) ## To pad a cell with zeros (str_pad function)
+library(emmeans)
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
@@ -54,6 +55,8 @@ Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
 
 ## Standardize the color scheme
 my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+
+therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 
 #### Models of Surface temperature vs. ambient temperature ####
 ## Not including Category as a covariate, just doing a linear model of surface vs. ambient temperatures
@@ -97,10 +100,85 @@ qqmath(~resid(mod_mixed_4)) ## Much better!!
 ## Accounting for individual and species, Random intercepts and random slopes.
 ## Gives identical results to above. So Indiv ID doesn't make a difference
 ## Ignore.
-mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + (1|Species_numeric:Indiv_numeric), data=therm_all)
+mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + (1|Indiv_numeric), data=therm_all)
 summary(mod_mixed_5)
 coef(mod_mixed_5)
 plot(mod_mixed_5)
+acf(resid(mod_mixed_5))
+
+## Benjamin suggested
+mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Category + Species_numeric + Cap_mass + (1|Indiv_numeric) + ## Always keep this
+                  Species_numeric:Category + 
+                  Species_numeric:Amb_Temp:Category + (1|Indiv_numeric:Category))
+#(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
+# Species:Category + 
+# Species:Amb:Category 
+
+mod_BVD_sp <- lmer(data=therm_all, Surf_Temp ~ 
+                     Amb_Temp + 
+                     Category + 
+                     Amb_Temp:Category + 
+                     Species + 
+                     Cap_mass +
+                     Species:Category + 
+                     Species:Amb_Temp:Category + 
+                     (1|Indiv_numeric)  + 
+                     (1|Indiv_numeric:Category))
+#(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
+
+summary(mod_BVD_sp)
+emmeans(mod_BVD, )
+confint(mod_BVD)
+acf(resid(mod_BVD_sp))
+em <- emmeans(mod_BVD_sp,  ~Species:Category)
+em
+emtrends(mod_BVD_sp, ~Category, var="")
+
+et<-emtrends(lm_full, ~State, var="Nest_I")
+et
+
+et<-emtrends(lm_full, pairwise ~Season, var="Date_Index" )
+
+## BVD:
+##First look at random effects' residual random effects. Then look at Intercept of random effects
+## To see how much variation they explain. In this mod_BVD, sd(Indiv_numeric)'s intercept is
+## about half the residual sd, which is a good thing.
+
+
+#Species:Category + Amb:Category, data=therm_all))
+  Species:Category + ## If I don't include this term and use emmeans, it means the species with more representation will 
+    ##weight the category averages more than species that have less representation
+    Amb:Category ## more optional
+  #Species:Amb:Category ## Will allow emmeans to balance category means across species
+  
+  ## A random effect doesn't get a mean estimate, it's variation. Random effects won't for the most part change mean estimates
+  ## Only effect sources of uncertainty.
+
+  
+  ## confint() help get conf intervals
+  ## Run emmeanson the model to get each category's estimates
+  ## TRY THIS: Use nlme to fit random effects, lme(), can fit autocorr terms. 
+  ## Has fixed effect, random, and lag1 autocorr func (give the autocorr fun a time var)
+  ## Time within indiv
+  ## gam can fit a spline term to the model to account for variation in temperature..
+  ## over time
+  ## OR can use lmer with extra package for spline term
+  
+## Could also do
+(1+Amb:Category|Indiv) 
+(1+amb|indiv) ## This means estimating covariance between slopes and intercept also
+(0+amb|indiv) ## 0 means not estimating intercept
+
+## Could scale data set to average amb temp
+data$Amb <- scale(data$Amb)
+
+
+# Testing autocorrelation
+simdat <- start_event(simdat, column="Time", event=c("Subject", "Trial"), label.event="Event")
+head(simdat)
+m4AR1 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=therm_all
+  
+  Y ~ te(Time, Trial)+s(Subject, bs='re'), data=simdat, rho=r1, AR.start=simdat$start.event)
 
 ## Run anova of model. Leaving out mod_mixed here because it doesn't make sense that categories would all have one fixed slope
 an.mod <- anova(mod_mixed_2,mod_mixed_3, mod_mixed_4)
@@ -180,6 +258,11 @@ coef(mod_glm_freq_sp_nb)
 ## Predict from this model and add these values back into the m.prop data frame
 m.prop$predicted <- predict(mod_glm_freq_sp_nb)
 plot(mod_glm_freq_sp_nb)
+
+
+
+## emmeans for means and uncertainty per category
+##
 
 
 #### Figures ####
