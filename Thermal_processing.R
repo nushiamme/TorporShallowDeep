@@ -54,7 +54,8 @@ bird.folders.all <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607"
 out_all <- data.frame(matrix(ncol = 6, nrow=109*length(bird.folders.all)))
 names(out_all) <- c("Indiv_ID", "Date", "Time", "variable", "value", "Hour")
 for(i in bird.folders.all) {
-  wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
+  wd2 <- file.path("C:", "Users", "nushi", "OneDrive - Cornell University", "IR_2018_csv", "Data")
+  #wd2 <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
   setwd(paste0(wd2, "/", i))
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
   out_all <- rbind(out,out_all)
@@ -109,6 +110,7 @@ for(i in 1:nrow(out_full)) {
   }
 }
 
+
 ## Add a column for capture masses
 out_full$Cap_mass <- 0
 
@@ -125,4 +127,5 @@ out_full$Category <- factor(out_full$Category, levels = c("Normothermic", "Shall
 
 ## Indiv_ID is stored as a list for some reason. Flatten it out to save as csv
 out_full$Indiv_ID <- vapply(out_full$Indiv_ID, paste, collapse = ", ", character(1L))
-write.csv(out_full, file = here("Data", "All_data.csv"))
+write.csv(out_full, file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\All_data.csv")
+

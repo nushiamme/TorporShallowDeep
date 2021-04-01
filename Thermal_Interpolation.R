@@ -12,14 +12,15 @@ library(segmented) ## Trying out a piecewise regression with this
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
 ### Trying out spline fitting March 11, 2021
-test <- therm_all[therm_all$Indiv_numeric==1,]
-dataTest_interpol <- data.frame()
-for(j in 1:length(unique(test$pasted))) {
-  for(i in unique(test$pasted)) {  
+## On Mar 30, 3031, trying to interpolate every 10 min instead of 1 min
+#test <- therm_all[therm_all$Indiv_numeric==1,]
+data_interpol <- data.frame()
+for(j in 1:length(unique(therm_all$pasted))) {
+  for(i in unique(therm_all$pasted)) {  
     ## Create trial column
-    trial <- test[test$pasted==i,]
+    trial <- therm_all[therm_all$pasted==i,]
     trial$Time <- as.numeric(as.character(trial$Time))
-    times <- c(seq(2100,2400,1), seq(100,459,1))
+    times <- c(seq(1930,2400,10), seq(100,530,10))
     sur_temps <- trial$Surf_Temp
     amb_temps <- trial$Amb_Temp
     #temps <- as.data.frame(trial$value)
@@ -28,28 +29,23 @@ for(j in 1:length(unique(test$pasted))) {
     time2 <- trial$Time
     
     ## Interpolate missing surface temperatures
-    sfun <- splinefun(time2, sur_temps)
+    sfun <- approxfun(time2, sur_temps, rule = 2)
     
     ## Interpolate missing ambient temperatures
-    afun <- splinefun(time2, amb_temps)
+    afun <- approxfun(time2, amb_temps, rule = 2)
     
     ## Ordering time in the interpolated data frame
-    TimeOrder1 <- seq(from = 2100, to = 2459, by = 1) ## Create seq for first half of night
-    TimeOrder2 <- seq(from = 100, to = 459, by = 1) ## Seq for second half of night
+    TimeOrder1 <- seq(from = 1900, to = 2459, by = 10) ## Create seq for first half of night
+    TimeOrder2 <- seq(from = 100, to = 559, by = 10) ## Seq for second half of night
     TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2)) ## Combine them, making all same length
     TimeOrder <- factor(TimeOrder, as.character(TimeOrder)) ## Make into a factor in the correct order
     
-    Time_unordered<- as.factor(format(seq.POSIXt(as.POSIXct(Sys.Date()), as.POSIXct(Sys.Date()+1), by = "1 min"),"%H%M", tz="GMT")) ## Make minute-by-minute to compare
+    #Time_unordered<- as.factor(format(seq.POSIXt(as.POSIXct(Sys.Date()), as.POSIXct(Sys.Date()+1), by = "10 min"),"%H%M", tz="GMT")) ## Make minute-by-minute to compare
     
     #TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatch=NA)])) ## Final time variable
     birdTime <- as.character(times) ## Save the interpolated time as a separate vector
     birdTime <- str_pad(birdTime, width=4, side="left", pad="0") ## Make sure all times are 4 characters long, otherwise pad in front with zero
     ## Compile interpolated df
-    interTemp <- data.frame(Indiv_pasted = i,
-                            Surf_Temp = sfun(times),
-                            Amb_Temp = afun(times),
-                            Cap_mass = 0)
-    
     interTemp <- data.frame(Indiv_pasted = i,
                             Surf_Temp = sfun(times),
                             Amb_Temp = afun(times),
@@ -75,9 +71,10 @@ for(j in 1:length(unique(test$pasted))) {
     }
     interTemp$Time <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)] ## Match times to correct ordered time and save into new column in interpolated dataset
     interTemp$Species <- substr(interTemp$Indiv_pasted, 1, 4)
-    dataTest_interpol <- rbind(dataTest_interpol, interTemp) # add it to your df
+    data_interpol <- rbind(data_interpol, interTemp) # add it to your df
   }
 }
+
 
 ## Mar 23, testing out the segmented package
 
@@ -103,7 +100,7 @@ sum(is.na(dataTest_interpol$Amb_Temp)) #Good if output is 0
 sum(is.na(dataTest_interpol$Surf_Temp)) #Good if output is 0
 
 ## Test plot
-ggplot(dataTest_interpol, aes(Time, Surf_Temp)) + my_theme2 +
+ggplot(dataTest_interpol, aes(Time, Surf_Temp)) + my_theme2 + facet_grid(.~Indiv_pasted) +
   geom_line(aes(group=Indiv_pasted, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_pasted, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
@@ -536,7 +533,7 @@ lines(test2$Seq2,ss$y,col="red",lwd=2)
 
 
 
-#### Interpolation, DO NOT rerun unless absolutely necessary - takes a lot of time ####
+#### Submitted Interpolation, DO NOT rerun unless absolutely necessary - takes a lot of time ####
 #### Interpolating to estimate proportion of time spent in each category
 data_interpol <- data.frame()
 for(j in 1:length(unique(therm_all$pasted))) {

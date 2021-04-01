@@ -20,7 +20,7 @@ library(reshape2) ## for dcast() function
 library(MASS) ## To check the distribution of the data and run glm.nb
 library(ggplot2)
 library(scales) # To plot stacked bar as percentages
-library(nlme) ## for gls model to compare them with lmer
+library(nlme) ## for gls model to compare them with lmer, and to account for autocorrelation
 library(lme4) # Running multilevel mixed models
 library(lmerTest) ## Optional, for p values on lmer models
 library(lattice) ## qqplot to look at lmer model residuals
@@ -40,6 +40,7 @@ categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
+#setwd("C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor")
 
 #### General functions ####
 ## Generic plot theme
@@ -55,8 +56,25 @@ Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
 
 ## Standardize the color scheme
 my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+my_gradient <- c("#823de9", "#7855ce", "#6e6eb2", "#648697", "#599e7c", "#4fb760", "#45cf45") ## Keep only if doing Categ*Sp temp plot
+my_gradient2 <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7", 
+                  "#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD", 
+                  "#D14285", "#6DDE88", "#652926", "#7FDCC0", "#C84248", "#8569D5", "#5E738F", "#D1A33D", 
+                  "#8A7C64", "#599861")
+
 
 therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+
+##Structuring time
+birdTime <- therm_all$Time
+TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
+TimeOrder2 <- seq(from = 100, to = 559, by = 1)
+TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
+TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
+
+birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
+therm_all$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
+
 
 #### Models of Surface temperature vs. ambient temperature ####
 ## Not including Category as a covariate, just doing a linear model of surface vs. ambient temperatures
@@ -113,31 +131,51 @@ mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Categ
 #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 # Species:Category + 
 # Species:Amb:Category 
-
+therm_all$Species <- as.factor(therm_all$Species)
 mod_BVD_sp <- lmer(data=therm_all, Surf_Temp ~ 
                      Amb_Temp + 
                      Category + 
                      Amb_Temp:Category + 
                      Species + 
                      Cap_mass +
-                     Species:Category + 
-                     Species:Amb_Temp:Category + 
+                     Amb_Temp:Species:Category + 
+                     #Species:Amb_Temp:Category + ## to allow emmeans to balance category means across species
                      (1|Indiv_numeric)  + 
                      (1|Indiv_numeric:Category))
 #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 
-summary(mod_BVD_sp)
-emmeans(mod_BVD, )
+mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+                     Amb_Temp + 
+                     Category + 
+                     Amb_Temp:Category + 
+                     Species + 
+                     Cap_mass +
+                     Amb_Temp:Species:Category,  
+                     random= ~1|Indiv_numeric/Category, 
+                  correlation=corAR1(form=~1|Indiv_numeric/Category))
+
+
+mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+                          Amb_Temp + 
+                          Category + 
+                          Amb_Temp:Category + 
+                          Species + 
+                          Cap_mass +
+                          Species:Category,  
+                        random= ~1|Indiv_numeric,
+                        correlation=corAR1(form=~1|Indiv_numeric))
+
+
+summary(mod_BVD_sp, correlation=T)
 confint(mod_BVD)
 acf(resid(mod_BVD_sp))
-em <- emmeans(mod_BVD_sp,  ~Species:Category)
+em <- emmeans(mod_BVD_sp_cor1,  ~Species:Category)
 em
-emtrends(mod_BVD_sp, ~Category, var="")
+em <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
+em
+#emtrends(mod_BVD_sp, ~Category, var="")
 
-et<-emtrends(lm_full, ~State, var="Nest_I")
-et
 
-et<-emtrends(lm_full, pairwise ~Season, var="Date_Index" )
 
 ## BVD:
 ##First look at random effects' residual random effects. Then look at Intercept of random effects
@@ -149,7 +187,8 @@ et<-emtrends(lm_full, pairwise ~Season, var="Date_Index" )
   Species:Category + ## If I don't include this term and use emmeans, it means the species with more representation will 
     ##weight the category averages more than species that have less representation
     Amb:Category ## more optional
-  #Species:Amb:Category ## Will allow emmeans to balance category means across species
+  #Species:Amb:Category ## Will allow emmeans to balance category means across species, instead
+  ## of giving species with more individual representation more weight
   
   ## A random effect doesn't get a mean estimate, it's variation. Random effects won't for the most part change mean estimates
   ## Only effect sources of uncertainty.
@@ -236,6 +275,114 @@ names(m.prop)[names(m.prop) == 'value'] <- 'freq'
 m.prop$Species <- substr(m.prop$Indiv_pasted, 1, 4)
 m.prop$Species <- as.factor(as.character(m.prop$Species))
 
+##### March 30, 2021: trying out non-interpolated proportion of time spent in each category ####
+#### Getting proportion of time each individual spent in each category to run model of proportions ####
+## Summarize proportion of time spent in each state, by species (uses non-interpolated, raw, data)
+
+##What is the average time between samples?
+# for(i in length(unique(therm_all$pasted))) {
+#   therm_all
+# }
+
+dattry <- therm_all
+data_TimeInterval <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+Time1 <- data.frame()
+Time2 <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+TimeInterval <- data.frame(Indiv=)
+for(j in 1:length(unique(dattry$pasted))) {
+  for(i in unique(dattry$pasted)) {
+    ## Create trial column
+    trial <- dattry[dattry$pasted==i,]
+    dattry$diff[dattry$pasted==i] <- c(NA, diff(trial$Time[trial$Time>1900]), NA, diff(trial$Time[trial$Time<700]))
+    }
+}
+
+
+
+for(j in 1:length(unique(therm_all$pasted))) {
+  for(i in unique(therm_all$pasted)) {
+    ## Create trial column
+    trial <- therm_all[therm_all$pasted=="BCHU01_061017",]
+    TimeInterval$Indiv <- trial$pasted
+    Time1 <- trial$Time[trial$Time>1900]
+    diff1 <- diff(trial$Time[trial$Time>1900])
+    Time2 <- trial$Time[trial$Time<700]
+    diff2 <- diff(trial$Time[trial$Time<700])
+    data_TimeInterval <- rbind(TimeTinterval, data.frame(Indiv))
+    , Time, diff
+    
+    data_TimeInterval <- rbind(data_TimeInterval, TimeInterval) # add it to your df
+  }
+}
+
+summary(data_TimeInterval)
+
+ggplot(data_TimeInterval) + geom_hist()
+
+plot(data_TimeInterval,type = "h")
+
+data_species_summ <- data_interpol %>%
+  count(Species, Category) %>%
+  group_by(Species) %>%
+  mutate(perc = (n / sum(n))*100)
+
+## By individual
+data_indiv_summ_interpol <- data_interpol %>%
+  group_by(Indiv_pasted, Category) %>%
+  summarise (n = length(Category))
+head(data_indiv_summ)
+
+## By individual
+data_indiv_summ_raw <- therm_all %>%
+  group_by(pasted, Category) %>%
+  summarise (n = length(Category))
+head(data_indiv_summ_raw)
+
+## Summarize (binary) whether individuals used a particular category or not
+indiv_categ_count <- ddply(data_indiv_summ_raw, c("Indiv_pasted"), dplyr::summarise, 
+                           Normothermic=sum(Category=="Normothermic"), ShallowTorpor=sum(Category=="Shallow"),
+                           Transition=sum(Category=="Transition"), DeepTorpor=sum(Category=="Torpor"))
+
+sum(indiv_categ_count$Normothermic) #no. indivs that used normo; should be all (33)
+sum(indiv_categ_count$ShallowTorpor) #no. indivs that used shallow
+sum(indiv_categ_count$Transition) #no. indivs that used transition
+sum(indiv_categ_count$DeepTorpor) #no. indivs that used deep torpor
+
+# Summarise number of records per individual in each category. Using interpolated data
+casted_indiv <-dcast(pasted~Category,data=therm_all, fun.aggregate= length,value.var = 'Category')
+names(casted_indiv) <- c("pasted", "Normothermic", "ShallowTorpor", "Transition", "DeepTorpor")
+prop_indiv_time <- data.frame(matrix(ncol = 5, nrow=nrow(casted_indiv)))
+names(prop_indiv_time) <- c("pasted", "Normothermic", "ShallowTorpor", "Transition", "DeepTorpor")
+prop_indiv_time$pasted <- casted_indiv$pasted
+for(i in 1:nrow(casted_indiv)) {
+  prop_indiv_time$Normothermic[i] <- round((casted_indiv$Normothermic[i]/(sum(casted_indiv$Normothermic[i], 
+                                                                              casted_indiv$ShallowTorpor[i], casted_indiv$Transition[i],
+                                                                              casted_indiv$DeepTorpor[i])))*100,0) 
+  prop_indiv_time$ShallowTorpor[i] <- round((casted_indiv$ShallowTorpor[i]/(sum(casted_indiv$Normothermic[i], 
+                                                                    casted_indiv$ShallowTorpor[i], casted_indiv$Transition[i],
+                                                                    casted_indiv$DeepTorpor[i])))*100,0) 
+  prop_indiv_time$Transition[i] <- round((casted_indiv$Transition[i]/(sum(casted_indiv$Normothermic[i], 
+                                                                          casted_indiv$ShallowTorpor[i], casted_indiv$Transition[i],
+                                                                          casted_indiv$DeepTorpor[i])))*100,0) 
+  prop_indiv_time$DeepTorpor[i] <- round((casted_indiv$DeepTorpor[i]/(sum(casted_indiv$Normothermic[i], 
+                                                                  casted_indiv$ShallowTorpor[i], casted_indiv$Transition[i],
+                                                                  casted_indiv$DeepTorpor[i])))*100,0)
+}
+head(prop_indiv_time)
+write.csv(prop_indiv_time, file=here("Data", "Prop_summ.csv"))
+
+## Melted dataframe for proportion of time spent in diff categories by species. Uses interpolated data
+m.prop <- melt(prop_indiv_time, id.vars = "Indiv_pasted", measure.vars = c("Normothermic", "ShallowTorpor", "Transition", "DeepTorpor"))
+tail(m.prop)
+names(m.prop)[names(m.prop) == 'value'] <- 'freq'
+m.prop$Species <- substr(m.prop$Indiv_pasted, 1, 4)
+m.prop$Species <- as.factor(as.character(m.prop$Species))
+
+##### End non-interpolation proportion of time ####
+
+
+
+
 #### GLM Models for proportion of time spent per category ####
 ## Not using individual-level models, doesn't make any sense to.
 #Trying to test how species are different, not individuals
@@ -271,7 +418,7 @@ plot(mod_glm_freq_sp_nb)
 ## 3D surface plots were constructed in ImageJ and added on in Illustrator/powerpoint
 single <- "MAHU10_0603"
 for(i in single) {
-  setwd(paste0(wd, "/", i))
+  setwd(paste0(wd, "/", i))## Or wherever .rds files are stored
   
   #### Plotting ####
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
@@ -315,6 +462,7 @@ for(i in single) {
   print(thermplot_col)
 }
 
+therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 
 ## Figure 4: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
@@ -322,13 +470,63 @@ for(i in single) {
 ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
   scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
   scale_colour_manual(values=my_colors) +
-  geom_smooth(aes(group=Category),method='lm') +
+  geom_smooth(aes(group=Category, col=Categ_Sp),method='lm') +
   scale_shape_manual(values = c(15:18)) +
   theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
-  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) #+
   guides(colour = guide_legend(override.aes = list(size=4)))
+
+## Figure 4 tweaking: Surface vs ambient temperature, with one linear model fitted to each category
+#therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+## Plot surface vs ambient temperature
+ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + 
+  geom_point(aes(col=Indiv_ID, shape=Category), size=2.5) + my_theme2 +
+  #scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
+  scale_colour_manual(values=c(my_colors, my_gradient2)) +
+  facet_grid(.~Species) +
+  #scale_color_manual(values = c(my_colors)) +
+  geom_smooth(aes(group=Category, col=Category),method='lm') +
+  scale_shape_manual(values = c(15:18)) +
+  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
+        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
+  xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) #+
+#guides(colour = guide_legend(override.aes = list(size=4)))
+
+## just MAHU to troubleshoot
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Amb_Temp, Surf_Temp)) + 
+  geom_point(aes(col=as.factor(Indiv_numeric), shape=Category), size=2.5) + my_theme2 +
+  scale_colour_manual(values=c(my_colors, my_gradient2)) +
+  #facet_grid(.~Species) +
+  #scale_color_manual(values = c(my_colors)) +
+  geom_smooth(aes(group=Category, col=Category),method='lm') +
+  scale_shape_manual(values = c(15:18)) +
+  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
+        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
+  xlab(expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab(expression(atop(paste("Surface Temperature (", degree,"C)")))) #+
+
+
+## Repeat colors across facets
+therm_all %>%
+  group_by(Species) %>%
+  mutate(dummy_var = as.character(x = factor(x = Indiv_ID,
+                                             labels = seq_len(length.out = n_distinct(x = Indiv_ID))))) %>%
+  ungroup() %>%
+  ggplot(aes(Amb_Temp, Surf_Temp)) + 
+  geom_point(aes(col=dummy_var, shape=Category), size=2.5) + my_theme2 +
+  #scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
+  scale_colour_manual(values=c(my_colors, my_gradient2)) +
+  facet_grid(.~Species) +
+  #scale_color_manual(values = c(my_colors)) +
+  geom_smooth(aes(group=Category, col=Category),method='lm') +
+  scale_shape_manual(values = c(15:18)) +
+  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
+        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
+  xlab(expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab(expression(atop(paste("Surface Temperature (", degree,"C)"))))
 
 ## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
 ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
@@ -365,19 +563,7 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
 
 #### New figures, from Reviewer suggestion, Feb 2021 ####
 
-##Structuring time
-birdsTime <- therm_all$Time
-TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
-TimeOrder2 <- seq(from = 0100, to = 0559, by = 1)
-TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
-TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
 
-Time_unordered<- as.factor(format(seq.POSIXt(as.POSIXct(Sys.Date()), as.POSIXct(Sys.Date()+1), by = "1 min"),"%H%M", tz="GMT"))
-
-TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatch=NA)]))
-
-
-therm_all$Time2 <- TimeOrder[match(birdsTime,TimeOrder,nomatch=NA)]
 
 ## Try to fit interpolated version of the same thing
 ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
@@ -430,7 +616,19 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
- 
+
+mahu03_categ <- categories[categories$Individual=="RIHU03_052718",]
+## Faceted by individual
+## On March 25, 2021  changed shallow/transition threshold for MAHU03 from 20 to 22.5
+ggplot(therm_all[therm_all$Indiv_ID=="MAHU03",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_ID, scales = "free_x") + my_theme2 +
+  scale_y_continuous(breaks = c(mahu03_categ$Normo_min, mahu03_categ$Shallow_max, mahu03_categ$Shallow_min, mahu03_categ$Transition_max, mahu03_categ$Transition_min)) +
+  geom_point(aes(col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(angle=90, size=8),
+        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines'))
+  
 ## Trying out a cubic spline
 fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = therm_all[therm_all$Indiv_numeric==22,])
 ## Faceted by individual
