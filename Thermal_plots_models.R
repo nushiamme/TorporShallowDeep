@@ -284,42 +284,64 @@ m.prop$Species <- as.factor(as.character(m.prop$Species))
 #   therm_all
 # }
 
+
+
+therm_all$Month <- substr(therm_all$Date, 1, 1)
+therm_all$Day <- as.numeric(substr(therm_all$Date, 2, 3))
+therm_all$Year <-as.numeric(paste0("20",therm_all$Year))
+therm_all$Minute <- as.numeric(str_sub(therm_all$Time, -2))
+therm_all$Hour2 <- therm_all$Hour
+therm_all$Hour2[therm_all$Hour==24] <- 0
+therm_all$Day[therm_all$Hour2<7] <- therm_all$Day[therm_all$Hour2<7]+1
+library(lubridate)
+therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, therm_all$Day, sep = "-"), 
+                                paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
+                                      str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
+                                format='%Y-%m-%d %H:%M')
+# therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
+#                                           str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
+#                                    format='%H:%M')
+
 dattry <- therm_all
-data_TimeInterval <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
-Time1 <- data.frame()
-Time2 <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
-TimeInterval <- data.frame(Indiv=)
-for(j in 1:length(unique(dattry$pasted))) {
-  for(i in unique(dattry$pasted)) {
-    ## Create trial column
-    trial <- dattry[dattry$pasted==i,]
-    dattry$diff[dattry$pasted==i] <- c(NA, diff(trial$Time[trial$Time>1900]), NA, diff(trial$Time[trial$Time<700]))
+##Order by date/time
+dattry <- dattry[order(as.POSIXct(dattry$DateFormat, format="%Y-%m-%d %H:%M")),]
+
+#dattry %>% mutate(across(DateFormat, ymd_hm)) %>% arrange(DateFormat)
+
+# data_TimeInterval <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+# Time1 <- data.frame()
+# Time2 <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+#TimeInterval <- data.frame(Indiv=)
+
+for(i in unique(dattry$pasted)) {
+  dattry$diff[dattry$pasted==i][1] <- NA
+  #dattry$TimeShift[dattry$pasted==i][1] <- NA
+  #dattry$TimeShift[2:length(dattry$TimeShift[dattry$pasted==i])] <- as.POSIXct(dattry$DateFormat[2:length(dattry$DateFormat[dattry$pasted==i])])
+  for(n in 2:length(dattry$Time[dattry$pasted==i])) {
+      ## Create trial column
+      trial <- dattry[dattry$pasted==i,]
+      # dattry$diff[dattry$pasted==i][n] <- c(NA, as.duration(trial$DateFormat[trial$Time>1900][2],
+      #                                                       trial$D[trial$Time>1900][1]),
+      #                                       NA, as.duration(trial$Time[trial$Time<700]))
+      dattry$diff[dattry$pasted==i][n] <- difftime(trial$DateFormat[n],trial$DateFormat[n-1], units="mins")
+      #dattry$diff2[dattry$pasted==i][n] <- difftime(dattry$DateFormat[dattry$pasted==i][n],dattry$TimeShift[dattry$pasted==i][n], units="mins")
     }
 }
+unique(dattry$diff)
+dattry[dattry$Indiv_numeric==1,]
+summary(dattry$diff)
+
+ggplot(dattry, aes(diff)) + geom_histogram()
+
+ggplot(dattry, aes(x=diff)) +
+  stat_density(aes(y=..count..), color="black", fill="blue", alpha=0.3) +
+  scale_x_continuous(breaks=c(0,1,10,100,300,1000), trans="log1p", expand=c(0,0)) +
+  scale_y_continuous(breaks=c(0,125,250,375,500,625,750,1000,10000,100000), expand=c(0,0)) +
+  theme_bw()
 
 
 
-for(j in 1:length(unique(therm_all$pasted))) {
-  for(i in unique(therm_all$pasted)) {
-    ## Create trial column
-    trial <- therm_all[therm_all$pasted=="BCHU01_061017",]
-    TimeInterval$Indiv <- trial$pasted
-    Time1 <- trial$Time[trial$Time>1900]
-    diff1 <- diff(trial$Time[trial$Time>1900])
-    Time2 <- trial$Time[trial$Time<700]
-    diff2 <- diff(trial$Time[trial$Time<700])
-    data_TimeInterval <- rbind(TimeTinterval, data.frame(Indiv))
-    , Time, diff
-    
-    data_TimeInterval <- rbind(data_TimeInterval, TimeInterval) # add it to your df
-  }
-}
-
-summary(data_TimeInterval)
-
-ggplot(data_TimeInterval) + geom_hist()
-
-plot(data_TimeInterval,type = "h")
+####
 
 data_species_summ <- data_interpol %>%
   count(Species, Category) %>%
@@ -417,8 +439,9 @@ plot(mod_glm_freq_sp_nb)
 ## Points were modified for clarity in Illustrator
 ## 3D surface plots were constructed in ImageJ and added on in Illustrator/powerpoint
 single <- "MAHU10_0603"
+wd2 <- file.path("C:", "Users", "nushi", "OneDrive - Cornell University", "IR_2018_csv", "Data")
 for(i in single) {
-  setwd(paste0(wd, "/", i))## Or wherever .rds files are stored
+  setwd(paste0(wd2, "/", i))## Or wherever .rds files are stored
   
   #### Plotting ####
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
