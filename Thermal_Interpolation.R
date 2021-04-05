@@ -7,12 +7,102 @@ library(here)
 library(plyr)
 library(stringr) ## To pad a cell with zeros (str_pad function)
 library(segmented) ## Trying out a piecewise regression with this
+library(chron)
 
 ## Read in file
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
+## Process therm_all dataset for time
+therm_all$Month <- substr(therm_all$Date, 1, 1)
+therm_all$Day <- as.numeric(substr(therm_all$Date, 2, 3))
+therm_all$Year <-as.numeric(paste0("20",therm_all$Year))
+therm_all$Minute <- as.numeric(str_sub(therm_all$Time, -2))
+therm_all$Hour2 <- therm_all$Hour
+therm_all$Hour2[therm_all$Hour==24] <- 0
+therm_all$Day2 <- therm_all$Day
+therm_all$Day2[therm_all$Hour2<7] <- therm_all$Day2[therm_all$Hour2<7]+1
+therm_all$Date_fixed1 <- as.POSIXct(paste(therm_all$Year, therm_all$Month, therm_all$Day, sep = "-"), 
+                                         format='%Y-%m-%d')
+therm_all$Date_fixed2 <- as.POSIXct(paste(therm_all$Year, therm_all$Month, therm_all$Day2, sep = "-"), 
+                                    format='%Y-%m-%d')
+
+therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, therm_all$Day2, sep = "-"), 
+                                         paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
+                                               str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
+                                   format='%Y-%m-%d %H:%M')
+# therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"),
+#                                          str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
+#                                    format='%H:%M')
+
+therm_all <- therm_all[order(as.POSIXct(therm_all$DateFormat, format="%Y-%m-%d %H:%M")),]
+
+
+## Apr 2, 2021
+trial <- therm_all[therm_all$pasted==i,]
+#trial$Time <- as.numeric(as.character(trial$Time))
+#times <- c(seq(1930,2400,10), seq(100,530,10))
+
+## Getting times to start and stop per night at the hour that the recordings started and stopped
+Night_start_hr <- head(trial$Hour, n=1) 
+Night_stop_hr <- tail(trial$Hour, n=1)
+Night_start_mn <- head(trial$Minute, n=1)
+Night_stop_mn <- tail(trial$Minute, n=1)
+
+date1 <- trial$Date_fixed1[trial$Hour>7]
+t1 <- merge(Night_start, seq(Night_start_mn, 50, by = 10))
+t1 <- rbind(t1, merge((Night_start+1):23, seq(0, 50, by = 10)))
+t1 <- as.POSIXct(paste(t1$x, str_pad(t1$y, width=2, side="left", pad="0"), "00", sep=':'), 
+                 format='%H:%M:%S')
+t1 <- t1[order(t1)]
+t1
+#date1 <- date1[order(date1)]
+date2 <- trial$Date_fixed2[trial$Hour<7]
+t2 <- merge(0:(Night_stop-1), seq(0, 50, by = 10))
+t2 <- rbind(t2, merge(Night_stop, seq(0, Night_stop_mn, by = 10)))
+t2 <- as.POSIXct(paste(t2$x, str_pad(t2$y, width=2, side="left", pad="0"), "00", sep=':'), 
+                 format='%H:%M:%S')
+# t2 <- data.frame('Interval' = chron(time = paste(t2$x, ':', t2$y, ':', 0)))
+t2 <- t2[order(t2)]
+t2
+
+#date2 <- date2[order(date2)]
+
+dt1 <- merge(unique(date1), strftime(t1, format="%H:%M:%S"))
+dt1 <- as.POSIXct(paste(dt1$x, dt1$y),format="%Y-%m-%d %H:%M")
+dt2 <- merge(unique(date2), strftime(t2, format="%H:%M:%S"))
+dt2 <- as.POSIXct(paste(dt2$x, dt2$y),format="%Y-%m-%d %H:%M")
+
+times_trial <- c(dt1, dt2)
+times_trial <- datetime[order(datetime)]
+times_num <- as.numeric(times_trial)
+
+sur_temps <- trial$Surf_Temp
+amb_temps <- trial$Amb_Temp
+#temps <- as.data.frame(trial$value)
+names(sur_temps) <- "Surf_Temp"
+names(amb_temps) <- "Amb_Temp"
+time2 <- as.numeric(trial$DateFormat)
+
+
+
+#time2 <- trial$DateFormat
+
+## Interpolate missing surface temperatures
+sfun <- approxfun(time2, sur_temps, rule = 2)
+
+## Interpolate missing ambient temperatures
+afun <- approxfun(time2, amb_temps, rule = 2)
+
+data.frame(Indiv_pasted = i,
+           Time = times_trial,
+           Surf_Temp = sfun(times_trial),
+           Amb_Temp = afun(times_trial),
+           Cap_mass = 0)
+plot(times_trial,col="red")
+points(time2)
+
 ### Trying out spline fitting March 11, 2021
-## On Mar 30, 3031, trying to interpolate every 10 min instead of 1 min
+## On Mar 30, 2021, trying to interpolate every 10 min instead of 1 min
 #test <- therm_all[therm_all$Indiv_numeric==1,]
 data_interpol <- data.frame()
 for(j in 1:length(unique(therm_all$pasted))) {
@@ -21,12 +111,14 @@ for(j in 1:length(unique(therm_all$pasted))) {
     trial <- therm_all[therm_all$pasted==i,]
     trial$Time <- as.numeric(as.character(trial$Time))
     times <- c(seq(1930,2400,10), seq(100,530,10))
+    
     sur_temps <- trial$Surf_Temp
     amb_temps <- trial$Amb_Temp
-    #temps <- as.data.frame(trial$value)
+    
     names(sur_temps) <- "Surf_Temp"
     names(amb_temps) <- "Amb_Temp"
     time2 <- trial$Time
+    
     
     ## Interpolate missing surface temperatures
     sfun <- approxfun(time2, sur_temps, rule = 2)
@@ -45,10 +137,11 @@ for(j in 1:length(unique(therm_all$pasted))) {
     #TimeFinal <- droplevels(na.omit(TimeOrder[match(Time_unordered, TimeOrder,nomatch=NA)])) ## Final time variable
     birdTime <- as.character(times) ## Save the interpolated time as a separate vector
     birdTime <- str_pad(birdTime, width=4, side="left", pad="0") ## Make sure all times are 4 characters long, otherwise pad in front with zero
+    
     ## Compile interpolated df
     interTemp <- data.frame(Indiv_pasted = i,
-                            Surf_Temp = sfun(times),
-                            Amb_Temp = afun(times),
+                            Surf_Temp = sfun(times_trial),
+                            Amb_Temp = afun(times_trial),
                             Cap_mass = 0)
     
     interTemp$Category <- 0
