@@ -35,7 +35,7 @@ thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw tempe
 
 # Other files
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
-interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 1 minute
+interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 10 min
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
 therm_all <- read.csv(here("Data", "All_data.csv"))
@@ -223,6 +223,12 @@ m4AR1 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=
 an.mod <- anova(mod_mixed_2,mod_mixed_3, mod_mixed_4)
 an.mod
 
+datapoints_raw <- vector()
+datapoints_interpol <- vector()
+for(i in unique(therm_all$pasted)){
+  datapoints_raw[i] <- length(therm_all$Surf_Temp[therm_all$pasted==i])
+  datapoints_interpol[i] <- length(data_interpol$Surf_Temp[data_interpol$Indiv_pasted==i])
+}
 
 
 #### Getting proportion of time each individual spent in each category to run model of proportions ####
@@ -240,9 +246,9 @@ data_indiv_summ
 
 ## Summarize (binary) whether individuals used a particular category or not
 indiv_categ_count <- ddply(data_indiv_summ, c("Indiv_pasted"), summarise, 
-                           Normo=sum(Category=="Normothermic"), Shallow=sum(Category=="Shallow"),
-                           Transition=sum(Category=="Transition"), Torpor=sum(Category=="Torpor"))
-sum(indiv_categ_count$Normo) #no. indivs that used normo; should be all (33)
+                           Normothermic=sum(Category=="Normothermic"), Shallow=sum(Category=="Shallow Torpor"),
+                           Transition=sum(Category=="Transition"), Torpor=sum(Category=="Deep Torpor"))
+sum(indiv_categ_count$Normothermic) #no. indivs that used normo; should be all (33)
 sum(indiv_categ_count$Shallow) #no. indivs that used shallow
 sum(indiv_categ_count$Transition) #no. indivs that used transition
 sum(indiv_categ_count$Torpor) #no. indivs that used deep torpor
@@ -298,9 +304,11 @@ therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, 
                                 paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
                                       str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
                                 format='%Y-%m-%d %H:%M')
-# therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
-#                                           str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
-#                                    format='%H:%M')
+therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"),
+                                          str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
+                                   format='%H:%M')
+
+
 
 dattry <- therm_all
 ##Order by date/time
@@ -420,13 +428,23 @@ mod_glm_freq_sp_quasi <- glm(freq~variable*Species-1, data=m.prop, family=quasip
 summary(mod_glm_freq_sp_quasi)
 
 ## Running  a negative binomial model, definitely the best. No overdispserion now, much lower residual variance.
-mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop)
+mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop_dur)
 summary(mod_glm_freq_sp_nb)
 coef(mod_glm_freq_sp_nb)
 
 ## Predict from this model and add these values back into the m.prop data frame
-m.prop$predicted <- predict(mod_glm_freq_sp_nb)
+m.prop_dur$predicted <- predict(mod_glm_freq_sp_nb)
 plot(mod_glm_freq_sp_nb)
+
+##With latter category rather than former
+## Running  a negative binomial model, definitely the best. No overdispserion now, much lower residual variance.
+mod_glm_freq_sp_nb2 <- glm.nb(freq~variable*Species-1, data=m.prop_dur2)
+summary(mod_glm_freq_sp_nb2)
+coef(mod_glm_freq_sp_nb2)
+
+## Predict from this model and add these values back into the m.prop data frame
+m.prop_dur2$predicted <- predict(mod_glm_freq_sp_nb2)
+plot(mod_glm_freq_sp_nb2)
 
 
 
