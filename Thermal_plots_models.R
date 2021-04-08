@@ -53,6 +53,8 @@ my_theme2 <- theme_classic(base_size = 15) +
 
 ## Axis labels
 Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
+STemp.lab <- expression(atop(paste("Surface Temperature (", degree,"C)")))
+ATemp.lab <- expression(atop(paste("Ambient Temperature (", degree,"C)")))
 
 ## Standardize the color scheme
 my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
@@ -107,7 +109,8 @@ coef(mod_mixed_3)
 plot(mod_mixed_3)
 
 ## Same as above but now including mass.
-## This is the final full (and best) model
+## This was the final full (and best) model. Earlier had species and category as fixed effects
+## And used lmer earlier, for mixed effects
 mod_mixed_4 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=therm_all)
 summary(mod_mixed_4)
 coef(mod_mixed_4)
@@ -118,31 +121,32 @@ qqmath(~resid(mod_mixed_4)) ## Much better!!
 ## Accounting for individual and species, Random intercepts and random slopes.
 ## Gives identical results to above. So Indiv ID doesn't make a difference
 ## Ignore.
-mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + (1|Indiv_numeric), data=therm_all)
+mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species + 
+                      (1|Indiv_numeric), data=therm_all, REML = FALSE)
 summary(mod_mixed_5)
 coef(mod_mixed_5)
 plot(mod_mixed_5)
 acf(resid(mod_mixed_5))
 
 ## Benjamin suggested
-mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Category + Species_numeric + Cap_mass + (1|Indiv_numeric) + ## Always keep this
-                  Species_numeric:Category + 
-                  Species_numeric:Amb_Temp:Category + (1|Indiv_numeric:Category))
+mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Category + 
+                  Species + Cap_mass + (1|Indiv_numeric) + ## Always keep this
+                  Species:Category + 
+                  Species:Amb_Temp:Category + (1|Indiv_numeric:Category))
 #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
-# Species:Category + 
-# Species:Amb:Category 
+
 therm_all$Species <- as.factor(therm_all$Species)
-mod_BVD_sp <- lmer(data=therm_all, Surf_Temp ~ 
-                     Amb_Temp + 
-                     Category + 
-                     Amb_Temp:Category + 
-                     Species + 
-                     Cap_mass +
-                     Amb_Temp:Species:Category + 
-                     #Species:Amb_Temp:Category + ## to allow emmeans to balance category means across species
-                     (1|Indiv_numeric)  + 
-                     (1|Indiv_numeric:Category))
-#(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
+# mod_BVD_sp <- lmer(data=therm_all, Surf_Temp ~ 
+#                      Amb_Temp + 
+#                      Category + 
+#                      Amb_Temp:Category + 
+#                      Species + 
+#                      Cap_mass +
+#                      Amb_Temp:Species:Category + 
+#                      #Species:Amb_Temp:Category + ## to allow emmeans to balance category means across species
+#                      (1|Indiv_numeric)  + 
+#                      (1|Indiv_numeric:Category))
+# #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 
 mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
                      Amb_Temp + 
@@ -154,27 +158,72 @@ mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                      random= ~1|Indiv_numeric/Category, 
                   correlation=corAR1(form=~1|Indiv_numeric/Category))
 
-
 mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
-                          Amb_Temp + 
-                          Category + 
-                          Amb_Temp:Category + 
-                          Species + 
-                          Cap_mass +
-                          Species:Category,  
-                        random= ~1|Indiv_numeric,
-                        correlation=corAR1(form=~1|Indiv_numeric))
+                               Amb_Temp + 
+                               Category + 
+                               Amb_Temp:Category + 
+                               Species + 
+                               Cap_mass +
+                               Species:Category,  
+                             random= ~1|Indiv_numeric/Category, 
+                             correlation=corAR1(form=~1|Indiv_numeric/Category))
+
+
+# mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+#                           Amb_Temp + 
+#                           Category + 
+#                           Amb_Temp:Category + 
+#                           Species + 
+#                           Cap_mass +
+#                           Species:Category,  
+#                         random= ~1|Indiv_numeric,
+#                         correlation=corAR1(form=~1|Indiv_numeric))
 
 
 summary(mod_BVD_sp, correlation=T)
 confint(mod_BVD)
 acf(resid(mod_BVD_sp))
-em <- emmeans(mod_BVD_sp_cor1,  ~Species:Category)
+em <- emmeans(mod_BVD,  ~Species:Category)
 em
-em <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
-em
+em1 <- emmeans(mod_BVD_sp_cor1,  ~Species:Category)
+em1
+summary(mod_BVD_sp_cor1)
+confint(mod_BVD_sp_cor1)
+acf(resid(mod_BVD_sp_cor1))
+em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
+em2
+summary(mod_BVD_sp_cor2)
+confint(mod_BVD_sp_cor2)
+acf(resid(mod_BVD_sp_cor2))
+
+plot(residuals(mod_BVD_sp_cor1),type="b")
+abline(h=0,lty=3)
+
+## For selecting best model with AIC
+library(MuMIn)
+MuMIn::model.sel(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
+anova(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
+
+
+# em <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
+# em
 #emtrends(mod_BVD_sp, ~Category, var="")
 
+predict_gam(mod_BVD_sp_cor1, values = list(f1 = c(0.5, 1, 1.5))) %>%
+  ggplot(aes(x2, fit)) +
+  geom_smooth_ci(f1)
+
+therm_all$fit <- predict(mod_BVD_sp_cor1)
+
+ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category, Species), col=Category, shape=Species)) + 
+  geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
+  geom_point(alpha = 0.3) + xlab(ATemp.lab) +
+  ylab(STemp.lab) +
+  my_theme
+
+ggplot(fortify(mod_BVD), aes(Amb_Temp, Surf_Temp, color=Category)) +
+  stat_summary(fun.data=mean_se, geom="pointrange") +
+  stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
 
 
 ## BVD:
@@ -195,7 +244,7 @@ em
 
   
   ## confint() help get conf intervals
-  ## Run emmeanson the model to get each category's estimates
+  ## Run emmeans on the model to get each category's estimates
   ## TRY THIS: Use nlme to fit random effects, lme(), can fit autocorr terms. 
   ## Has fixed effect, random, and lag1 autocorr func (give the autocorr fun a time var)
   ## Time within indiv
@@ -411,8 +460,6 @@ m.prop$Species <- as.factor(as.character(m.prop$Species))
 ##### End non-interpolation proportion of time ####
 
 
-
-
 #### GLM Models for proportion of time spent per category ####
 ## Not using individual-level models, doesn't make any sense to.
 #Trying to test how species are different, not individuals
@@ -616,7 +663,6 @@ ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
 
 
-
 ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
@@ -661,14 +707,43 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
 mahu03_categ <- categories[categories$Individual=="RIHU03_052718",]
 ## Faceted by individual
 ## On March 25, 2021  changed shallow/transition threshold for MAHU03 from 20 to 22.5
-ggplot(therm_all[therm_all$Indiv_ID=="MAHU03",], aes(Time2, Surf_Temp)) + 
-  facet_wrap(.~Indiv_ID, scales = "free_x") + my_theme2 +
+ggplot(therm_all[therm_all$pasted=="RIHU03_052718",], aes(DateFormat, Surf_Temp)) + my_theme2 +
+  #facet_wrap(.~Indiv_ID, scales = "free_x") + 
   scale_y_continuous(breaks = c(mahu03_categ$Normo_min, mahu03_categ$Shallow_max, mahu03_categ$Shallow_min, mahu03_categ$Transition_max, mahu03_categ$Transition_min)) +
-  geom_point(aes(col=Category), size=1.5) +
+  geom_point(aes(col=Category), size=1.5, shape=0) +
+  geom_point(data=interpolated[interpolated$Indiv_pasted=="RIHU03_052718",],
+             aes(as.POSIXct(Time), Surf_Temp, col=Category), size=1.5, alpha=0.8) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(angle=90, size=8),
         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines'))
+
+
+bchu01_categ <- categories[categories$Individual=="BCHU01_061017",]
+## Faceted by individual
+## On March 25, 2021  changed shallow/transition threshold for MAHU03 from 20 to 22.5
+ggplot(therm_all[therm_all$pasted=="BCHU01_061017",], aes(DateFormat, Surf_Temp)) + my_theme2 +
+  #facet_wrap(.~Indiv_ID, scales = "free_x") + 
+  scale_y_continuous(breaks = c(bchu01_categ$Normo_min, bchu01_categ$Shallow_max, bchu01_categ$Shallow_min, bchu01_categ$Transition_max, bchu01_categ$Transition_min)) +
+  geom_point(aes(col=Category), size=1.5, shape=0) +
+  geom_point(data=interpolated[interpolated$Indiv_pasted=="BCHU01_061017",],
+             aes(as.POSIXct(Time), Surf_Temp, col=Category), size=1.5, alpha=0.8) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(angle=90, size=8),
+        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines'))
+
+
+# ### Plotting Ts - Ta and Ta
+# therm_all$Ts_Ta <- therm_all$Surf_Temp - therm_all$Amb_Temp
+# ggplot(therm_all[therm_all$Species=="MAHU",], aes(DateFormat, Surf_Temp)) + my_theme2 +
+#   facet_wrap(.~Indiv_numeric, scales = "free_x") + 
+#   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+#   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+#   geom_line(aes(group=Indiv_numeric, y=Ts_Ta), col="red", linetype="dashed") +
+#   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+#   theme(axis.text.x = element_text(angle=90, vjust=0.5),
+#         legend.key.height = unit(3, 'lines'))
   
 ## Trying out a cubic spline
 fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = therm_all[therm_all$Indiv_numeric==22,])
@@ -691,20 +766,35 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2
         legend.key.height = unit(3, 'lines'))
 
 
-## INCORPORATE change into text and models - Changed MAHU02 from shallow to deep torpor
+## INCORPORATE change into text and models - Changed RIHU02_061117 from shallow to deep torpor
 ## Changed thresholds from 30-30 to 30-30-29-29-26-26
 
-## Individual MAHU02
+## Individual Indiv_ID = MAHU02 (there are two indivs with that ID), Unique: RIHU02_061117, numeric 22
 ggplot(therm_all[therm_all$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
 
-## Individual BCHU01, changed threshold for transition
+## Individual BCHU01_052118, changed threshold for transition
 ## From 29	29	27	27	12	12
 ## To 
-ggplot(therm_all[therm_all$Indiv_ID=="BCHU01",], aes(Time2, Surf_Temp)) + my_theme2 +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+ggplot(therm_all[therm_all$pasted=="BCHU01_052118",], aes(DateFormat, Surf_Temp)) + my_theme2 + facet_grid(.~pasted, scales="free_x") +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=0.5) +
+  geom_point(aes(col=Category), size=2) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+ggplot(therm_all[therm_all$pasted=="RIHU10_060318",], aes(DateFormat, Surf_Temp)) + my_theme2 + facet_grid(.~pasted, scales="free_x") +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=0.5) +
+  geom_point(aes(col=Category), size=2) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+ggplot(data_interpol[data_interpol$Indiv_pasted=="RIHU10_060318",], aes(Time, Surf_Temp)) + my_theme2 + #facet_grid(.~pasted, scales="free_x") +
+  geom_line(aes(group=Indiv_pasted, col=Category), size=0.5) +
+  geom_point(aes(col=Category), size=2) +
+  geom_line(aes(group=Indiv_pasted, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+ggplot(therm_all, aes(Duration)) + geom_histogram() + my_theme
+
 

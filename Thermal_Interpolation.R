@@ -207,6 +207,25 @@ for(j in 1:length(unique(therm_all$pasted))) {
 data_interpol$Category <- factor(data_interpol$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 
 
+### Merge raw and interpolated data frames to compare sampling frequencies
+data_interpol$RawInterpol <- "Interpolated"
+
+Raw_tomerge <- therm_all[, c("pasted", "DateFormat", "Surf_Temp", "Amb_Temp",
+                             "Cap_mass", "Category", "Species")]
+
+names(Raw_tomerge)[names(Raw_tomerge)=="pasted"] <- "Indiv_pasted"
+names(Raw_tomerge)[names(Raw_tomerge)=="DateFormat"] <- "Time"
+Raw_tomerge$RawInterpol <- "Raw"
+
+non_dupl_interpol <- data_interpol[!duplicated(data_interpol[c("Indiv_pasted", "Time", "Surf_Temp",
+                                                               "Amb_Temp", "Cap_mass", "Category",
+                                                               "Species", "RawInterpol")]),]
+
+merged_raw_interpol <- rbind(Raw_tomerge, non_dupl_interpol)
+
+merged_raw_interpol <- merged_raw_interpol[order(as.POSIXct(merged_raw_interpol$Time, format="%Y-%m-%d %H:%M")),]
+
+
 
 ## What was night length in minutes per individual?
 Nightlength_raw <- vector()
@@ -271,10 +290,10 @@ for(n in 1:(length(trial$Surf_Temp)-1)) {
 for(i in unique(therm_all$pasted)) {
   trial <- therm_all[therm_all$pasted==i,]
   for(n in 2:length(trial$Surf_Temp)) {
-    trial$DurationSecond[1] <- NA
-    trial$DurationSecond[n] <- difftime(trial$DateFormat[n], trial$DateFormat[(n-1)], units='mins')
+    trial$Duration2[1] <- NA
+    trial$Duration2[n] <- difftime(trial$DateFormat[n], trial$DateFormat[(n-1)], units='mins')
   }
-  therm_all$DurationSecond[therm_all$pasted==i] <- trial$DurationSecond
+  therm_all$Duration2[therm_all$pasted==i] <- trial$Duration2
 }
 
 duration_categ_summ <- as.data.frame(therm_all %>%
