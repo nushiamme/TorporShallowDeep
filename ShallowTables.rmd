@@ -1,0 +1,38 @@
+---
+title: "ShallowTables"
+author: "Anusha Shankar"
+date: "5/5/2021"
+output: word_document
+---
+
+
+```{r setup, echo=T}
+library(here)
+library(nlme) ## for gls model to compare them with lmer, account for autocorrelation
+library(emmeans)
+#getwd()
+here <- here::here
+therm_all <- read.csv(here("..", "..", "Data", "All_data.csv"))
+#head(therm_all)
+
+therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+therm_all$Species <- as.factor(therm_all$Species)
+
+mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+                               Amb_Temp + 
+                               Category + 
+                               Amb_Temp:Category + 
+                               Species + 
+                               Cap_mass +
+                               Species:Category,  
+                             random= ~1|Indiv_numeric/Category, 
+                             correlation=corAR1(form=~1|Indiv_numeric/Category))
+em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
+#em2
+#summary(mod_BVD_sp_cor2)
+#confint(mod_BVD_sp_cor2)
+acf(resid(mod_BVD_sp_cor2))
+knitr::kable(em2, digits=2)
+knitr::kable(summary(mod_BVD_sp_cor2)$tTable, digits=2)
+
+```

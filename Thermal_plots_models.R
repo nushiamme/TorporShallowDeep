@@ -27,6 +27,9 @@ library(lattice) ## qqplot to look at lmer model residuals
 #library(viridis) # Source of the colors used here; but manually coded
 library(stringr) ## To pad a cell with zeros (str_pad function)
 library(emmeans)
+library(sjPlot) ## Plotting interaction term model - VERY USEFUL OR
+library(ggeffects) ## Also for plotting predicted values 
+library(glmmTMB) ## To plot random effects with sjPlot 
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
@@ -88,6 +91,12 @@ plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 ## (1|Categ) would allow intercepts to vary by category, but not slopes. i.e. you fix the slope
 ## (Amb_Temp|Categ) allows slopes and intercepts to vary by category
 
+## t test of differences in temp between years
+t.test(therm_all$Amb_Temp[therm_all$Year==17], therm_all$Amb_Temp[therm_all$Year==18])
+
+mean(therm_all$Amb_Temp[therm_all$Year==2017])
+sd(therm_all$Amb_Temp[therm_all$Year==2017], na.rm=TRUE)
+
 ## First, multilevel model with random intercepts and fixed slope for all categories
 mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + Category, data=therm_all)
 summary(mod_mixed)
@@ -131,8 +140,8 @@ acf(resid(mod_mixed_5))
 ## Benjamin suggested
 mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Category + 
                   Species + Cap_mass + (1|Indiv_numeric) + ## Always keep this
-                  Species:Category + 
-                  Species:Amb_Temp:Category + (1|Indiv_numeric:Category))
+                  Species:Category + (1|Indiv_numeric:Category))
+                  #Species:Amb_Temp:Category + 
 #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 
 therm_all$Species <- as.factor(therm_all$Species)
@@ -148,6 +157,7 @@ therm_all$Species <- as.factor(therm_all$Species)
 #                      (1|Indiv_numeric:Category))
 # #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 
+
 mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
                      Amb_Temp + 
                      Category + 
@@ -158,6 +168,7 @@ mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                      random= ~1|Indiv_numeric/Category, 
                   correlation=corAR1(form=~1|Indiv_numeric/Category))
 
+## better AICc
 mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
                                Amb_Temp + 
                                Category + 
@@ -199,9 +210,17 @@ acf(resid(mod_BVD_sp_cor2))
 plot(residuals(mod_BVD_sp_cor1),type="b")
 abline(h=0,lty=3)
 
+class(summary(mod_BVD_sp_cor2))
+
+summary(mod_BVD_sp_cor2)$tTable
+
+## SO USEFUL interaction effects plot!!
+plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + my_theme
+
 ## For selecting best model with AIC
 library(MuMIn)
 MuMIn::model.sel(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
+MuMIn::model.sel(mod_BVD_sp_cor1, mod_BVD_sp_cor2)
 anova(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
 
 
@@ -556,7 +575,7 @@ therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
 ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
-  scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
+  scale_y_continuous(breaks = seq(0,40,5)) +
   scale_colour_manual(values=my_colors) +
   geom_smooth(aes(group=Category, col=Categ_Sp),method='lm') +
   scale_shape_manual(values = c(15:18)) +
@@ -564,7 +583,7 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape
         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) #+
-  guides(colour = guide_legend(override.aes = list(size=4)))
+  #guides(colour = guide_legend(override.aes = list(size=4)))
 
 ## Figure 4 tweaking: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
@@ -582,6 +601,45 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) +
   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) #+
 #guides(colour = guide_legend(override.aes = list(size=4)))
+
+## Figure 4  using model outputs!!
+## library(sjPlot)
+plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + 
+  my_theme +
+  geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
+             inherit.aes = F) +
+  scale_colour_manual(values=my_colors) +
+  scale_fill_manual(values=my_colors) +
+  xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ggtitle("")
+
+
+## Line plots of mean and SD per category and species
+plot_model(mod_BVD_sp_cor2, type = "int", terms = "Category*Species", line.size=1.3,
+           point.size=1.3)[[2]] +
+  my_theme + scale_x_discrete(expand=c(0.5, 0.7)) +
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ggtitle("")
+
+
+## Random effects
+plot_model(mod_BVD, type = "re", aes(color=Category))
+plot_grid(p)
+
+#library(ggeffects)
+dfpred <- ggpredict(mod_BVD, terms = c("Amb_Temp","Category"))
+ggplot(dfpred, aes(x, predicted)) + my_theme +
+  geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
+             inherit.aes = F) +
+  geom_line(aes(color=group)) +
+  geom_ribbon(aes(ymin=conf.low, ymax=conf.high, fill=group), show.legend = F, alpha=0.15) +
+  scale_colour_manual(values=my_colors) +
+  scale_fill_manual(values=my_colors) +
+  xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ggtitle("")
+
 
 ## just MAHU to troubleshoot
 ggplot(therm_all[therm_all$Species=="MAHU",], aes(Amb_Temp, Surf_Temp)) + 
@@ -673,25 +731,25 @@ ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
 #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
 
 # All individuals in one plot
-ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
-  theme(axis.text.x = element_text(angle=90, vjust=0.5),
-        legend.key.height = unit(3, 'lines'))
+  theme(legend.key.height = unit(3, 'lines'), axis.text.x = element_blank())
 
 ## Faceted by individual
-ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
-  facet_wrap(.~Indiv_numeric, scales = "free_x") + 
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme +
+  facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
-  theme(axis.text.x = element_text(angle=90, vjust=0.5),
-        legend.key.height = unit(3, 'lines'))
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
+        strip.text.x = element_blank())
 
 # All individuals in one plot
-ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
@@ -702,6 +760,15 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
+
+ggplot(therm_all[therm_all$Indiv_ID=="MAHU10",], aes(Time2, Surf_Temp)) + 
+  theme_classic(base_size = 30) + #theme(panel.border = element_rect(colour = "white", fill=NA)) +
+  geom_line(aes(group=Indiv_numeric), size=1, col='grey80') +
+  geom_point(aes(col=Category), size=4) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5, size=15),
         legend.key.height = unit(3, 'lines'))
 
 mahu03_categ <- categories[categories$Individual=="RIHU03_052718",]
@@ -732,6 +799,7 @@ ggplot(therm_all[therm_all$pasted=="BCHU01_061017",], aes(DateFormat, Surf_Temp)
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(angle=90, size=8),
         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines'))
+
 
 
 # ### Plotting Ts - Ta and Ta

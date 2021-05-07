@@ -124,7 +124,6 @@ out_full$Species <- substr(out_full$Indiv_ID, 1, 4) ## Making a species column
 out_full$Species_numeric <- cumsum(!duplicated(out_full$Species))
 out_full$Category <- factor(out_full$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 
-
 ## Indiv_ID is stored as a list for some reason. Flatten it out to save as csv
 out_full$Indiv_ID <- vapply(out_full$Indiv_ID, paste, collapse = ", ", character(1L))
 write.csv(out_full, file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\All_data.csv")

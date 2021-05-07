@@ -10,6 +10,13 @@ library(segmented) ## Trying out a piecewise regression with this
 library(chron)
 library(gridExtra) ## for seeing interpol and raw plots side by side
 
+## Generic standard error function
+se <- function(dt) {
+  sd(dt, na.rm=T) /  
+  sqrt(length(dt[!is.na(dt)]))
+}
+
+
 ## Read in file
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
@@ -38,74 +45,74 @@ therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, 
 therm_all <- therm_all[order(as.POSIXct(therm_all$DateFormat, format="%Y-%m-%d %H:%M")),]
 
 
-## Apr 2, 2021
-trial <- therm_all[therm_all$pasted=="BCHU01_061017",]
-#trial$Time <- as.numeric(as.character(trial$Time))
-#times <- c(seq(1930,2400,10), seq(100,530,10))
-
-## Getting times to start and stop per night at the hour that the recordings started and stopped
-Night_start_hr <- head(trial$Hour, n=1) 
-Night_stop_hr <- tail(trial$Hour, n=1)
-if(trial$Minute[1]<=50){
-  Night_start_mn <- head(trial$Minute, n=1)
-} else if (trial$Minute[1] >50) {
-  Night_start_mn <- 50
-  }
-Night_stop_mn <- tail(trial$Minute, n=1)
-
-date1 <- trial$Date_fixed1[trial$Hour>7]
-t1 <- merge(Night_start_hr, seq(from=Night_start_mn, to=50, by = 10))
-t1 <- rbind(t1, merge((Night_start_hr+1):23, seq(0, 50, by = 10)))
-t1 <- as.POSIXct(paste(t1$x, str_pad(t1$y, width=2, side="left", pad="0"), "00", sep=':'), 
-                 format='%H:%M:%S')
-t1 <- t1[order(t1)]
-t1
-#date1 <- date1[order(date1)]
-date2 <- trial$Date_fixed2[trial$Hour<7]
-t2 <- merge(0:(Night_stop_hr-1), seq(0, 50, by = 10))
-t2 <- rbind(t2, merge(Night_stop_hr, seq(0, Night_stop_mn, by = 10)))
-t2 <- as.POSIXct(paste(t2$x, str_pad(t2$y, width=2, side="left", pad="0"), "00", sep=':'), 
-                 format='%H:%M:%S')
-# t2 <- data.frame('Interval' = chron(time = paste(t2$x, ':', t2$y, ':', 0)))
-t2 <- t2[order(t2)]
-t2
-
-#date2 <- date2[order(date2)]
-
-dt1 <- merge(unique(date1), strftime(t1, format="%H:%M:%S"))
-dt1 <- as.POSIXct(paste(dt1$x, dt1$y),format="%Y-%m-%d %H:%M")
-dt2 <- merge(unique(date2), strftime(t2, format="%H:%M:%S"))
-dt2 <- as.POSIXct(paste(dt2$x, dt2$y),format="%Y-%m-%d %H:%M")
-
-times_trial <- c(dt1, dt2)
-times_trial <- times_trial[order(times_trial)]
-times_num <- as.numeric(times_trial)
-
-sur_temps <- trial$Surf_Temp
-amb_temps <- trial$Amb_Temp
-#temps <- as.data.frame(trial$value)
-names(sur_temps) <- "Surf_Temp"
-names(amb_temps) <- "Amb_Temp"
-time2 <- as.numeric(trial$DateFormat)
-
-
-
-#time2 <- trial$DateFormat
-
-## Interpolate missing surface temperatures
-sfun <- approxfun(time2, sur_temps, rule = 2)
-
-## Interpolate missing ambient temperatures
-afun <- approxfun(time2, amb_temps, rule = 2)
-
-data.frame(Indiv_pasted = i,
-           Time = times_trial,
-           Surf_Temp = sfun(times_trial),
-           Amb_Temp = afun(times_trial),
-           Cap_mass = 0)
-plot(times_trial,col="red")
-points(time2)
-
+# ## Apr 2, 2021
+# trial <- therm_all[therm_all$pasted=="BCHU01_061017",]
+# #trial$Time <- as.numeric(as.character(trial$Time))
+# #times <- c(seq(1930,2400,10), seq(100,530,10))
+# 
+# ## Getting times to start and stop per night at the hour that the recordings started and stopped
+# Night_start_hr <- head(trial$Hour, n=1) 
+# Night_stop_hr <- tail(trial$Hour, n=1)
+# if(trial$Minute[1]<=50){
+#   Night_start_mn <- head(trial$Minute, n=1)
+# } else if (trial$Minute[1] >50) {
+#   Night_start_mn <- 50
+#   }
+# Night_stop_mn <- tail(trial$Minute, n=1)
+# 
+# date1 <- trial$Date_fixed1[trial$Hour>7]
+# t1 <- merge(Night_start_hr, seq(from=Night_start_mn, to=50, by = 10))
+# t1 <- rbind(t1, merge((Night_start_hr+1):23, seq(0, 50, by = 10)))
+# t1 <- as.POSIXct(paste(t1$x, str_pad(t1$y, width=2, side="left", pad="0"), "00", sep=':'), 
+#                  format='%H:%M:%S')
+# t1 <- t1[order(t1)]
+# t1
+# #date1 <- date1[order(date1)]
+# date2 <- trial$Date_fixed2[trial$Hour<7]
+# t2 <- merge(0:(Night_stop_hr-1), seq(0, 50, by = 10))
+# t2 <- rbind(t2, merge(Night_stop_hr, seq(0, Night_stop_mn, by = 10)))
+# t2 <- as.POSIXct(paste(t2$x, str_pad(t2$y, width=2, side="left", pad="0"), "00", sep=':'), 
+#                  format='%H:%M:%S')
+# # t2 <- data.frame('Interval' = chron(time = paste(t2$x, ':', t2$y, ':', 0)))
+# t2 <- t2[order(t2)]
+# t2
+# 
+# #date2 <- date2[order(date2)]
+# 
+# dt1 <- merge(unique(date1), strftime(t1, format="%H:%M:%S"))
+# dt1 <- as.POSIXct(paste(dt1$x, dt1$y),format="%Y-%m-%d %H:%M")
+# dt2 <- merge(unique(date2), strftime(t2, format="%H:%M:%S"))
+# dt2 <- as.POSIXct(paste(dt2$x, dt2$y),format="%Y-%m-%d %H:%M")
+# 
+# times_trial <- c(dt1, dt2)
+# times_trial <- times_trial[order(times_trial)]
+# times_num <- as.numeric(times_trial)
+# 
+# sur_temps <- trial$Surf_Temp
+# amb_temps <- trial$Amb_Temp
+# #temps <- as.data.frame(trial$value)
+# names(sur_temps) <- "Surf_Temp"
+# names(amb_temps) <- "Amb_Temp"
+# time2 <- as.numeric(trial$DateFormat)
+# 
+# 
+# 
+# #time2 <- trial$DateFormat
+# 
+# ## Interpolate missing surface temperatures
+# sfun <- approxfun(time2, sur_temps, rule = 2)
+# 
+# ## Interpolate missing ambient temperatures
+# afun <- approxfun(time2, amb_temps, rule = 2)
+# 
+# data.frame(Indiv_pasted = i,
+#            Time = times_trial,
+#            Surf_Temp = sfun(times_trial),
+#            Amb_Temp = afun(times_trial),
+#            Cap_mass = 0)
+# plot(times_trial,col="red")
+# points(time2)
+# 
 
 
 ### Trying out spline fitting March 11, 2021
@@ -399,6 +406,55 @@ m.prop_dur_pred_plot2 <- ggplot(m.prop_dur2, aes(Species,predicted)) + my_theme 
   theme(legend.key.height = unit(3, 'lines'))
 
 grid.arrange(m.prop_dur_plot2, m.prop_dur_pred_plot2, ncol=2,  widths = c(1.5, 2))
+
+
+## Calculate rate of change of temperatures in each category
+TransitionRate <- therm_all[therm_all$Category=="Transition",]
+NormoRate <- therm_all[therm_all$Category=="Normothermic",]
+ShallowRate <- therm_all[therm_all$Category=="Shallow Torpor",]
+DeepRate <- therm_all[therm_all$Category=="Deep Torpor",]
+
+rate_func <- function(dat) {
+  for(i in unique(dat$pasted)) {
+    trial <- dat[dat$pasted==i,]
+    trial$Rate <- NA
+    for(n in 2:length(trial$Surf_Temp)) {
+      trial$Rate[n] <- (trial$Surf_Temp[n] - trial$Surf_Temp[n-1])/trial$Duration2[n]
+    }
+    for(n in 1:length(trial$Surf_Temp-1)) {
+      trial$Rate2[n] <- (trial$Surf_Temp[n+1] - trial$Surf_Temp[n])/trial$Duration[n]
+    }
+    dat$Rate[dat$pasted==i] <- trial$Rate
+    dat$Rate2[dat$pasted==i] <- trial$Rate2
+    return(dat)
+  }
+}
+
+TransitionRate <- rate_func(TransitionRate)
+NormoRate <-  rate_func(NormoRate)
+ShallowRate <- rate_func(ShallowRate)
+DeepRate <- rate_func(DeepRate)
+
+head(NormoRate)
+head(ShallowRate)
+head(TransitionRate)
+head(DeepRate)
+
+sd(abs(TransitionRate$Rate2), na.rm = T)
+summary(abs(NormoRate$Rate2))
+summary(abs(ShallowRate$Rate2))
+summary(abs(TransitionRate$Rate2))
+summary(abs(DeepRate$Rate2))
+
+se(TransitionRate$Rate2)
+psych::describe(TransitionRate$Rate)
+
+Rates <- rbind(NormoRate, ShallowRate, TransitionRate, DeepRate)
+
+Rates$Category <- factor(Rates$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+
+### Rate of change of temperature in deg C/min
+ggplot(Rates, aes(Category, abs(Rate2))) + geom_boxplot() + geom_point() + my_theme
 
 ############################################################################
 
