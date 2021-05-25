@@ -618,7 +618,7 @@ plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] +
 ## Line plots of mean and SD per category and species
 plot_model(mod_BVD_sp_cor2, type = "int", terms = "Category*Species", line.size=1.3,
            point.size=1.3)[[2]] +
-  my_theme + scale_x_discrete(expand=c(0.5, 0.7)) +
+  my_theme + #scale_x_discrete(expand=c(0.1, 0.2)) +
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   ggtitle("")
 
@@ -628,7 +628,7 @@ plot_model(mod_BVD, type = "re", aes(color=Category))
 plot_grid(p)
 
 #library(ggeffects)
-dfpred <- ggpredict(mod_BVD, terms = c("Amb_Temp","Category"))
+dfpred <- ggpredict(mod_BVD, terms = c("Amb_Temp","Category", "Species"))
 ggplot(dfpred, aes(x, predicted)) + my_theme +
   geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
              inherit.aes = F) +
@@ -640,6 +640,21 @@ ggplot(dfpred, aes(x, predicted)) + my_theme +
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   ggtitle("")
 
+ggplot(dfpred, aes(group, predicted)) + my_theme +
+  #geom_line() +
+  geom_point(aes(col=facet))+
+  geom_errorbar(aes(ymin=conf.low, ymax=conf.high, col=facet), width=.2,
+                position=position_dodge(0.05)) +
+  #scale_colour_manual(values=my_colors) +
+  #scale_fill_manual(values=my_colors) +
+  #xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ggtitle("")
+
+dfpred2 <- ggpredict(mod_BVD, terms = c("Species","Category"))
+plot(dfpred2, add.data = T, line.size=1.5, dot.alpha=0.2) + scale_colour_manual(values=my_colors) +
+  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
+  ggtitle("") + my_theme + theme(legend.key.height =  unit(3, 'lines'))
 
 ## just MAHU to troubleshoot
 ggplot(therm_all[therm_all$Species=="MAHU",], aes(Amb_Temp, Surf_Temp)) + 
@@ -762,14 +777,16 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
-ggplot(therm_all[therm_all$Indiv_ID=="MAHU10",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Indiv_ID=="MAHU10",], aes(DateFormat, Surf_Temp)) + 
   theme_classic(base_size = 30) + #theme(panel.border = element_rect(colour = "white", fill=NA)) +
   geom_line(aes(group=Indiv_numeric), size=1, col='grey80') +
   geom_point(aes(col=Category), size=4) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
-  theme(axis.text.x = element_text(angle=90, vjust=0.5, size=15),
-        legend.key.height = unit(3, 'lines'))
+  theme(axis.text.x = element_text(vjust=0.5, size=15),
+        legend.key.height = unit(3, 'lines')) #+
+  # scale_x_date(date_breaks = '5 minutes',
+  #              date_labels = '%H%M')
 
 mahu03_categ <- categories[categories$Individual=="RIHU03_052718",]
 ## Faceted by individual

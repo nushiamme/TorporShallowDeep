@@ -1,0 +1,93 @@
+---
+title: "Individuals Overnight"
+author: "Anusha Shankar"
+date: "5/25/2021"
+output: word_document
+---
+
+```{r setup, echo=F}
+library(here)
+library(ggplot2)
+
+here <- here::here
+thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
+
+# Other files
+categories <- read.csv(here("Data", "Category_thresholds.csv"))
+therm_all <- read.csv(here("Data", "All_data.csv"))
+
+## Generic plot theme
+my_theme <- theme_classic(base_size = 30) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_theme2 <- theme_classic(base_size = 15) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+## Axis labels
+Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
+STemp.lab <- expression(atop(paste("Surface Temperature (", degree,"C)")))
+ATemp.lab <- expression(atop(paste("Ambient Temperature (", degree,"C)")))
+
+## Standardize the color scheme
+my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+
+## Organizing
+therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+##Structuring time
+birdTime <- therm_all$Time
+TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
+TimeOrder2 <- seq(from = 100, to = 559, by = 1)
+TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
+TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
+
+birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
+therm_all$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
+
+```
+
+All individuals
+```{r, echo=F}
+##Plots
+# All individuals in one plot
+ggplot(therm_all, aes(Time2, Surf_Temp)) + my_theme +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(legend.key.height = unit(3, 'lines'), axis.text.x = element_blank())
+```
+
+Just RIHU
+```{r echo=F}
+## Faceted by individual
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme +
+  facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
+        strip.text.x = element_blank())
+```
+
+Just BLHU
+```{r echo=F}
+ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme +
+  facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
+        strip.text.x = element_blank())
+```
+
+
+```{r echo=F}
+## Faceted by individual
+ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+  facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  theme(axis.text.x = element_text(angle=90, vjust=0.5),
+        legend.key.height = unit(3, 'lines'))
+```
