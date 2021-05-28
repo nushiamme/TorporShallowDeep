@@ -107,16 +107,13 @@ All individuals
 ```{r echo=F}
 #FIXX THIS
 ## Faceted by individual
-fun<- function(i) {
-ggplot(, aes(Time2, Surf_Temp)) +
-  facet_grid(Indiv_numeric~., scales = "free_x") + my_theme2 +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-        legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
-        strip.text.x = element_blank())
+func_plots <- function(i){
+    ggplot(therm_all[therm_all$Indiv_numeric==i,], aes(x=Time2,y=Surf_Temp)) + my_theme2 + facet_grid(.~Indiv_ID) +
+    geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+    geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+    scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+          legend.key.height = unit(3, 'lines')) + xlab("Time")
 }
-
-lapply(therm_all[therm_all$Indiv_numeric==i])
+lapply(unique(therm_all$Indiv_numeric), func_plots)
 ```
