@@ -853,6 +853,8 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2
 
 ## INCORPORATE change into text and models - Changed RIHU02_061117 from shallow to deep torpor
 ## Changed thresholds from 30-30 to 30-30-29-29-26-26
+## Changed RIHU03_052718 thresholds from to 29-29-22.5-22.5-14-14 to 29-29-20.5-20.5-14-14
+
 
 ## Individual Indiv_ID = MAHU02 (there are two indivs with that ID), Unique: RIHU02_061117, numeric 22
 ggplot(therm_all[therm_all$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
@@ -879,6 +881,17 @@ ggplot(data_interpol[data_interpol$Indiv_pasted=="RIHU10_060318",], aes(Time, Su
   geom_point(aes(col=Category), size=2) +
   geom_line(aes(group=Indiv_pasted, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+ggplot(therm_all[therm_all$pasted=="RIHU03_052718",], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~pasted, scales="free_x") +
+  geom_line(aes(group=Indiv_numeric, col=Category), size=0.5) +
+  geom_point(aes(col=Category), size=2) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  scale_y_continuous(breaks=1:35) +   
+  theme(panel.grid.major.y = element_line(color='black'),
+        panel.grid.minor.y = element_line(color='black'))
+
+
 
 ggplot(therm_all, aes(Duration)) + geom_histogram() + my_theme
 

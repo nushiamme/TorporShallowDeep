@@ -23,7 +23,7 @@ thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw tempe
 
 # Other files
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
-interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 1 minute
+#interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 1 minute
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
 
