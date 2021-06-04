@@ -29,7 +29,9 @@ library(stringr) ## To pad a cell with zeros (str_pad function)
 library(emmeans)
 library(sjPlot) ## Plotting interaction term model - VERY USEFUL OR
 library(ggeffects) ## Also for plotting predicted values 
-library(glmmTMB) ## To plot random effects with sjPlot 
+library(glmmTMB) ## To plot random effects with sjPlot
+library(lubridate)
+
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
@@ -79,6 +81,24 @@ TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
 
 birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
 therm_all$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
+
+
+## Structuring time and Date
+therm_all$Month <- substr(therm_all$Date, 1, 1)
+therm_all$Day <- as.numeric(substr(therm_all$Date, 2, 3))
+therm_all$Year <-as.numeric(paste0("20",therm_all$Year))
+therm_all$Minute <- as.numeric(str_sub(therm_all$Time, -2))
+therm_all$Hour2 <- therm_all$Hour
+therm_all$Hour2[therm_all$Hour==24] <- 0
+therm_all$Day[therm_all$Hour2<7] <- therm_all$Day[therm_all$Hour2<7]+1
+therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, therm_all$Day, sep = "-"), 
+                                         paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
+                                               str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
+                                   format='%Y-%m-%d %H:%M')
+therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"),
+                                         str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
+                                   format='%H:%M')
+
 
 
 #### Models of Surface temperature vs. ambient temperature ####
@@ -358,63 +378,45 @@ m.prop$Species <- as.factor(as.character(m.prop$Species))
 #   therm_all
 # }
 
-
-
-therm_all$Month <- substr(therm_all$Date, 1, 1)
-therm_all$Day <- as.numeric(substr(therm_all$Date, 2, 3))
-therm_all$Year <-as.numeric(paste0("20",therm_all$Year))
-therm_all$Minute <- as.numeric(str_sub(therm_all$Time, -2))
-therm_all$Hour2 <- therm_all$Hour
-therm_all$Hour2[therm_all$Hour==24] <- 0
-therm_all$Day[therm_all$Hour2<7] <- therm_all$Day[therm_all$Hour2<7]+1
-library(lubridate)
-therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, therm_all$Day, sep = "-"), 
-                                paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
-                                      str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
-                                format='%Y-%m-%d %H:%M')
-therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"),
-                                          str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"),
-                                   format='%H:%M')
-
-
-
-dattry <- therm_all
-##Order by date/time
-dattry <- dattry[order(as.POSIXct(dattry$DateFormat, format="%Y-%m-%d %H:%M")),]
-
-#dattry %>% mutate(across(DateFormat, ymd_hm)) %>% arrange(DateFormat)
-
-# data_TimeInterval <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
-# Time1 <- data.frame()
-# Time2 <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
-#TimeInterval <- data.frame(Indiv=)
-
-for(i in unique(dattry$pasted)) {
-  dattry$diff[dattry$pasted==i][1] <- NA
-  #dattry$TimeShift[dattry$pasted==i][1] <- NA
-  #dattry$TimeShift[2:length(dattry$TimeShift[dattry$pasted==i])] <- as.POSIXct(dattry$DateFormat[2:length(dattry$DateFormat[dattry$pasted==i])])
-  for(n in 2:length(dattry$Time[dattry$pasted==i])) {
-      ## Create trial column
-      trial <- dattry[dattry$pasted==i,]
-      # dattry$diff[dattry$pasted==i][n] <- c(NA, as.duration(trial$DateFormat[trial$Time>1900][2],
-      #                                                       trial$D[trial$Time>1900][1]),
-      #                                       NA, as.duration(trial$Time[trial$Time<700]))
-      dattry$diff[dattry$pasted==i][n] <- difftime(trial$DateFormat[n],trial$DateFormat[n-1], units="mins")
-      #dattry$diff2[dattry$pasted==i][n] <- difftime(dattry$DateFormat[dattry$pasted==i][n],dattry$TimeShift[dattry$pasted==i][n], units="mins")
-    }
-}
-unique(dattry$diff)
-dattry[dattry$Indiv_numeric==1,]
-summary(dattry$diff)
-
-ggplot(dattry, aes(diff)) + geom_histogram()
-
-ggplot(dattry, aes(x=diff)) +
-  stat_density(aes(y=..count..), color="black", fill="blue", alpha=0.3) +
-  scale_x_continuous(breaks=c(0,1,10,100,300,1000), trans="log1p", expand=c(0,0)) +
-  scale_y_continuous(breaks=c(0,125,250,375,500,625,750,1000,10000,100000), expand=c(0,0)) +
-  theme_bw()
-
+## Interpolating
+# 
+# dattry <- therm_all
+# ##Order by date/time
+# dattry <- dattry[order(as.POSIXct(dattry$DateFormat, format="%Y-%m-%d %H:%M")),]
+# 
+# #dattry %>% mutate(across(DateFormat, ymd_hm)) %>% arrange(DateFormat)
+# 
+# # data_TimeInterval <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+# # Time1 <- data.frame()
+# # Time2 <- data.frame(Indiv=numeric(0), Time=numeric(0), diff=numeric(0))
+# #TimeInterval <- data.frame(Indiv=)
+# 
+# for(i in unique(dattry$pasted)) {
+#   dattry$diff[dattry$pasted==i][1] <- NA
+#   #dattry$TimeShift[dattry$pasted==i][1] <- NA
+#   #dattry$TimeShift[2:length(dattry$TimeShift[dattry$pasted==i])] <- as.POSIXct(dattry$DateFormat[2:length(dattry$DateFormat[dattry$pasted==i])])
+#   for(n in 2:length(dattry$Time[dattry$pasted==i])) {
+#       ## Create trial column
+#       trial <- dattry[dattry$pasted==i,]
+#       # dattry$diff[dattry$pasted==i][n] <- c(NA, as.duration(trial$DateFormat[trial$Time>1900][2],
+#       #                                                       trial$D[trial$Time>1900][1]),
+#       #                                       NA, as.duration(trial$Time[trial$Time<700]))
+#       dattry$diff[dattry$pasted==i][n] <- difftime(trial$DateFormat[n],trial$DateFormat[n-1], units="mins")
+#       #dattry$diff2[dattry$pasted==i][n] <- difftime(dattry$DateFormat[dattry$pasted==i][n],dattry$TimeShift[dattry$pasted==i][n], units="mins")
+#     }
+# }
+# unique(dattry$diff)
+# dattry[dattry$Indiv_numeric==1,]
+# summary(dattry$diff)
+# 
+# ggplot(dattry, aes(diff)) + geom_histogram()
+# 
+# ggplot(dattry, aes(x=diff)) +
+#   stat_density(aes(y=..count..), color="black", fill="blue", alpha=0.3) +
+#   scale_x_continuous(breaks=c(0,1,10,100,300,1000), trans="log1p", expand=c(0,0)) +
+#   scale_y_continuous(breaks=c(0,125,250,375,500,625,750,1000,10000,100000), expand=c(0,0)) +
+#   theme_bw()
+# 
 
 
 ####
@@ -522,7 +524,7 @@ plot(mod_glm_freq_sp_nb2)
 ## Figure 2: Single RIHU individual's temperatures plotted over the course of a night
 ## Points were modified for clarity in Illustrator
 ## 3D surface plots were constructed in ImageJ and added on in Illustrator/powerpoint
-single <- "MAHU10_0603"
+single <- "RIHU10_0603"
 wd2 <- file.path("C:", "Users", "nushi", "OneDrive - Cornell University", "IR_2018_csv", "Data")
 for(i in single) {
   setwd(paste0(wd2, "/", i))## Or wherever .rds files are stored
@@ -656,8 +658,8 @@ plot(dfpred2, add.data = T, line.size=1.5, dot.alpha=0.2) + scale_colour_manual(
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   ggtitle("") + my_theme + theme(legend.key.height =  unit(3, 'lines'))
 
-## just MAHU to troubleshoot
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Amb_Temp, Surf_Temp)) + 
+## just RIHU to troubleshoot
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Amb_Temp, Surf_Temp)) + 
   geom_point(aes(col=as.factor(Indiv_numeric), shape=Category), size=2.5) + my_theme2 +
   scale_colour_manual(values=c(my_colors, my_gradient2)) +
   #facet_grid(.~Species) +
@@ -724,8 +726,6 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
 
 #### New figures, from Reviewer suggestion, Feb 2021 ####
 
-
-
 ## Try to fit interpolated version of the same thing
 ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
@@ -746,13 +746,13 @@ ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
 #+ geom_line(aes(col=Category), size=1.2) +  theme(axis.text.x = element_text(angle=40))
 
 # All individuals in one plot
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme +
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + my_theme +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(legend.key.height = unit(3, 'lines'), axis.text.x = element_blank())
 
 ## Faceted by individual
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme +
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + my_theme +
   facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -762,14 +762,14 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme 
         strip.text.x = element_blank())
 
 # All individuals in one plot
-ggplot(therm_all[therm_all$Species=="BLHU",], aes(Time2, Surf_Temp)) + my_theme +
+ggplot(therm_all[therm_all$Species=="BLUH",], aes(Time2, Surf_Temp)) + my_theme +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
 ## Faceted by individual
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -777,7 +777,7 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
   theme(axis.text.x = element_text(angle=90, vjust=0.5),
         legend.key.height = unit(3, 'lines'))
 
-ggplot(therm_all[therm_all$Indiv_ID=="MAHU10",], aes(DateFormat, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Indiv_ID=="RIHU10",], aes(DateFormat, Surf_Temp)) + 
   theme_classic(base_size = 30) + #theme(panel.border = element_rect(colour = "white", fill=NA)) +
   geom_line(aes(group=Indiv_numeric), size=1, col='grey80') +
   geom_point(aes(col=Category), size=4) +
@@ -788,9 +788,9 @@ ggplot(therm_all[therm_all$Indiv_ID=="MAHU10",], aes(DateFormat, Surf_Temp)) +
   # scale_x_date(date_breaks = '5 minutes',
   #              date_labels = '%H%M')
 
-mahu03_categ <- categories[categories$Individual=="RIHU03_052718",]
+RIHU03_categ <- categories[categories$Individual=="RIHU03_052718",]
 ## Faceted by individual
-## On March 25, 2021  changed shallow/transition threshold for MAHU03 from 20 to 22.5
+## On March 25, 2021  changed shallow/transition threshold for RIHU03 from 20 to 22.5
 ggplot(therm_all[therm_all$pasted=="RIHU03_052718",], aes(DateFormat, Surf_Temp)) + my_theme2 +
   #facet_wrap(.~Indiv_ID, scales = "free_x") + 
   scale_y_continuous(breaks = c(mahu03_categ$Normo_min, mahu03_categ$Shallow_max, mahu03_categ$Shallow_min, mahu03_categ$Transition_max, mahu03_categ$Transition_min)) +
@@ -805,7 +805,6 @@ ggplot(therm_all[therm_all$pasted=="RIHU03_052718",], aes(DateFormat, Surf_Temp)
 
 bchu01_categ <- categories[categories$Individual=="BCHU01_061017",]
 ## Faceted by individual
-## On March 25, 2021  changed shallow/transition threshold for MAHU03 from 20 to 22.5
 ggplot(therm_all[therm_all$pasted=="BCHU01_061017",], aes(DateFormat, Surf_Temp)) + my_theme2 +
   #facet_wrap(.~Indiv_ID, scales = "free_x") + 
   scale_y_continuous(breaks = c(bchu01_categ$Normo_min, bchu01_categ$Shallow_max, bchu01_categ$Shallow_min, bchu01_categ$Transition_max, bchu01_categ$Transition_min)) +
@@ -821,7 +820,7 @@ ggplot(therm_all[therm_all$pasted=="BCHU01_061017",], aes(DateFormat, Surf_Temp)
 
 # ### Plotting Ts - Ta and Ta
 # therm_all$Ts_Ta <- therm_all$Surf_Temp - therm_all$Amb_Temp
-# ggplot(therm_all[therm_all$Species=="MAHU",], aes(DateFormat, Surf_Temp)) + my_theme2 +
+# ggplot(therm_all[therm_all$Species=="RIHU",], aes(DateFormat, Surf_Temp)) + my_theme2 +
 #   facet_wrap(.~Indiv_numeric, scales = "free_x") + 
 #   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
 #   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -833,7 +832,7 @@ ggplot(therm_all[therm_all$pasted=="BCHU01_061017",], aes(DateFormat, Surf_Temp)
 ## Trying out a cubic spline
 fit<-lm(Surf_Temp ~ bs(Time2,knots = c(25,40,60)),data = therm_all[therm_all$Indiv_numeric==22,])
 ## Faceted by individual
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + 
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + 
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -844,7 +843,7 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) +
 
 
 # All individuals in one plot
-ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2 +
+ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
@@ -853,10 +852,11 @@ ggplot(therm_all[therm_all$Species=="MAHU",], aes(Time2, Surf_Temp)) + my_theme2
 
 ## INCORPORATE change into text and models - Changed RIHU02_061117 from shallow to deep torpor
 ## Changed thresholds from 30-30 to 30-30-29-29-26-26
-## Changed RIHU03_052718 thresholds from to 29-29-22.5-22.5-14-14 to 29-29-20.5-20.5-14-14
+## On March 25, 2021  changed shallow/transition threshold for RIHU03 from 20 to 22.5
+## Changed RIHU03_052718 thresholds back from to 29-29-22.5-22.5-14-14 to 29-29-20.5-20.5-14-14 on May 31
 
 
-## Individual Indiv_ID = MAHU02 (there are two indivs with that ID), Unique: RIHU02_061117, numeric 22
+## Individual Indiv_ID = RIHU02 (there are two indivs with that ID), Unique: RIHU02_061117, numeric 22
 ggplot(therm_all[therm_all$Indiv_numeric==22,], aes(Time2, Surf_Temp)) + my_theme2 +
   geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
@@ -882,17 +882,37 @@ ggplot(data_interpol[data_interpol$Indiv_pasted=="RIHU10_060318",], aes(Time, Su
   geom_line(aes(group=Indiv_pasted, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab)
 
+
+
+
+therm_doubleCateg <- data.frame()
+for(i in unique(therm_all$pasted)) {
+    trial <- therm_all[therm_all$pasted==i,]
+    trial$Categ2[1] <- as.character(trial$Category[1])
+    for(n in 2:length(trial$Category)) {
+      trial$Categ2[n] <- as.character(trial$Category[n+1])
+      trial$Categ2[length(trial$Category)] <- as.character(trial$Category[length(trial$Category)])
+    }
+    trial$Categ3 <- trial$Categ2
+      for(j in 1:length(trial$Categ3)) {
+         trial$Categ3[j][trial$Categ3[j]=="Transition" & trial$Categ3[j+1] %in% c("Shallow Torpor", "Normothermic")] <- "Transition"
+      }
+    therm_doubleCateg <- rbind(therm_doubleCateg, trial)
+}
+therm_doubleCateg$Categ2 <- as.factor(therm_doubleCateg$Categ2)
+
+therm_all$Categ2 <- therm_doubleCateg$Categ2
+therm_all$Categ2 <- factor(therm_all$Categ2, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+
 ggplot(therm_all[therm_all$pasted=="RIHU03_052718",], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~pasted, scales="free_x") +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=0.5) +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=0.5) +
   geom_point(aes(col=Category), size=2) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
-  scale_y_continuous(breaks=1:35) +   
-  theme(panel.grid.major.y = element_line(color='black'),
-        panel.grid.minor.y = element_line(color='black'))
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
+
+for(j in 1:length(trial$Categ3)) {
+    print(trial$Categ3[j][trial$Categ3[j]=="Transition" & trial$Categ3[j+1] %in% c("Shallow Torpor", "Normothermy")])
+}
 
 
-
-ggplot(therm_all, aes(Duration)) + geom_histogram() + my_theme
-
-
+ggplot(trial, aes(Time2, Surf_Temp)) + geom_point(aes(col=Category))

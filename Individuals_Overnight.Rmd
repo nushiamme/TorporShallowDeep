@@ -6,7 +6,7 @@ output: word_document
 ---
 
 ```{r setup, echo=F}
-knitr::opts_chunk$set(fig.width=14, fig.height=8) 
+knitr::opts_chunk$set(fig.width=20, fig.height=8) 
 library(ggplot2)
 library(stringr)
 library(summarytools)
@@ -45,13 +45,21 @@ TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
 
 birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
 therm_all$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
-therm_all$Species <- gsub('MA', 'RI', therm_all$Species) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
-therm_all$Species <- gsub('BLHU', 'BLUH', therm_all$Species) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
 
-therm_all$Indiv_ID <- gsub('MA', 'RI', therm_all$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
-therm_all$Indiv_ID <- gsub('BLHU', 'BLUH', therm_all$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
+therm_doubleCateg <- data.frame()
+for(i in unique(therm_all$pasted)) {
+    trial <- therm_all[therm_all$pasted==i,]
+    trial$Categ2[1] <- as.character(trial$Category[1])
+    for(n in 2:length(trial$Category)) {
+      trial$Categ2[n] <- as.character(trial$Category[n+1])
+      trial$Categ2[length(trial$Category)] <- as.character(trial$Category[length(trial$Category)])
+    }
+    therm_doubleCateg <- rbind(therm_doubleCateg, trial)
+}
+therm_doubleCateg$Categ2 <- as.factor(therm_doubleCateg$Categ2)
 
-therm_all$pasted <- paste(therm_all$Indiv_ID, "_", as.character(str_pad(therm_all$Date, 4, pad = "0")), therm_all$Year, sep="")
+therm_all$Categ2 <- therm_doubleCateg$Categ2
+therm_all$Categ2 <- factor(therm_all$Categ2, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ```
 
 ```{r eval=FALSE, include=FALSE}
@@ -59,13 +67,14 @@ dfSummary(therm_all, plain.ascii = FALSE, style = "grid",
           graph.magnif = 0.75, valid.col = FALSE)
 ```
 
-All individuals
-```{r, echo=F, fig.width=14, fig.height=20}
+All individuals, faceted by species
+```{r, echo=F, fig.width=14, fig.height=30}
 ##Plots
 # All individuals in one plot
 ggplot(therm_all, aes(Time2, Surf_Temp)) + my_theme2 +
   facet_grid(Species~.) +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
@@ -77,8 +86,9 @@ Just RIHU
 ## Faceted by individual
 ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + my_theme2 +
   facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
+  #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
@@ -89,8 +99,9 @@ Just BLUH
 ```{r echo=F}
 ggplot(therm_all[therm_all$Species=="BLUH",], aes(Time2, Surf_Temp)) + my_theme2 +
   facet_wrap(.~Indiv_numeric, scales = "free_x",) + 
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
+  #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
@@ -102,21 +113,22 @@ Just BCHU
 ## Faceted by individual
 ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
   facet_wrap(.~Indiv_numeric, scales = "free_x") + my_theme2 +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=1.5) +
-  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
+  #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
         strip.text.x = element_blank())
 ```
 
-All individuals
+All individuals, one plot each
 ```{r echo=F}
 ## Faceted by individual
 func_plots <- function(i){
   ggplot(therm_all[therm_all$Indiv_numeric==i,], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~pasted) +
-  geom_line(aes(group=Indiv_numeric, col=Category), size=0.5) +
-  geom_point(aes(col=Category), size=2) +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   scale_color_manual(values=my_colors) + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),

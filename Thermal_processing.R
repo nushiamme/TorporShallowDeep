@@ -120,11 +120,21 @@ for(i in 1:nrow(out_full)) {
 
 ## Running an ancova on Surface ~ Ambient temperature
 out_full$Indiv_numeric <- cumsum(!duplicated(out_full$pasted)) ## Making individual column numeric for the ancova, but this turns out to be unnecessary
+#Reviewer and others say to include Indiv ID in the model anyway.
 out_full$Species <- substr(out_full$Indiv_ID, 1, 4) ## Making a species column
 out_full$Species_numeric <- cumsum(!duplicated(out_full$Species))
 out_full$Category <- factor(out_full$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+out_full$Species <- gsub('MA', 'RI', out_full$Species) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
+out_full$Species <- gsub('BLHU', 'BLUH', out_full$Species) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
 
 ## Indiv_ID is stored as a list for some reason. Flatten it out to save as csv
 out_full$Indiv_ID <- vapply(out_full$Indiv_ID, paste, collapse = ", ", character(1L))
+
+out_full$Indiv_ID <- gsub('MA', 'RI', out_full$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
+out_full$Indiv_ID <- gsub('BLHU', 'BLUH', out_full$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU from latest renaming
+
+out_full$pasted <- paste(out_full$Indiv_ID, "_", as.character(str_pad(out_full$Date, 4, pad = "0")), out_full$Year, sep="")
+
+
 write.csv(out_full, file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\All_data.csv")
 
