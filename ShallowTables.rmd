@@ -18,21 +18,22 @@ therm_all <- read.csv(here("..", "..", "Data", "All_data.csv"))
 therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 therm_all$Species <- as.factor(therm_all$Species)
 
-mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
                                Amb_Temp + 
                                Category + 
                                Amb_Temp:Category + 
                                Species + 
                                Cap_mass +
-                               Species:Category,  
+                               Year +
+                               Species:Category,  ## Different from the previous because this is a two-var term
                              random= ~1|Indiv_numeric/Category, 
                              correlation=corAR1(form=~1|Indiv_numeric/Category))
-em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
-#em2
+em <- emmeans(mod_cor,  ~Species:Category)
 #summary(mod_BVD_sp_cor2)
 #confint(mod_BVD_sp_cor2)
-acf(resid(mod_BVD_sp_cor2))
-knitr::kable(em2, digits=2)
-knitr::kable(summary(mod_BVD_sp_cor2)$tTable, digits=2)
+acf(resid(mod_cor))
+knitr::kable(em, digits=2)
+knitr::kable(intervals(mod_cor)$, digits=2)
+knitr::kable(summary(mod_cor)$tTable, digits=2)
 
 ```

@@ -31,11 +31,14 @@ Temp.lab <- expression(atop(paste("Temperature (", degree,"C)")))
 STemp.lab <- expression(atop(paste("Surface Temperature (", degree,"C)")))
 ATemp.lab <- expression(atop(paste("Ambient Temperature (", degree,"C)")))
 
-## Standardize the color scheme
-my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
-
 ## Organizing
 therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+
+## Standardize the color scheme
+my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+names(my_colors) <- levels(therm_all$Category)
+colScale <- scale_colour_manual(name = "Category", values = my_colors)
+
 ##Structuring time
 birdTime <- therm_all$Time
 TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
@@ -68,17 +71,31 @@ dfSummary(therm_all, plain.ascii = FALSE, style = "grid",
 ```
 
 All individuals, faceted by species
-```{r, echo=F, fig.width=14, fig.height=30}
+```{r, echo=F, fig.width=20, fig.height=24}
 ##Plots
 # All individuals in one plot
 ggplot(therm_all, aes(Time2, Surf_Temp)) + my_theme2 +
   facet_grid(Species~.) +
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
   geom_point(aes(col=Category), size=3) +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  colScale + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
         strip.text.x = element_blank())
+```
+
+```{r echo=F}
+## RIHU all in one plot
+func_plots <- function(i){
+  ggplot(therm_all[therm_all$Species==i,], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~Species) +
+  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+  geom_point(aes(col=Category), size=3) +
+  geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  colScale + ylab(Temp.lab) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        legend.key.height = unit(3, 'lines')) + xlab("Time")
+}
+lapply(unique(therm_all$Species), func_plots)
 ```
 
 Just RIHU
@@ -89,7 +106,7 @@ ggplot(therm_all[therm_all$Species=="RIHU",], aes(Time2, Surf_Temp)) + my_theme2
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
   geom_point(aes(col=Category), size=3) +
   #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  colScale + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
         strip.text.x = element_blank())
@@ -102,7 +119,7 @@ ggplot(therm_all[therm_all$Species=="BLUH",], aes(Time2, Surf_Temp)) + my_theme2
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
   geom_point(aes(col=Category), size=3) +
   #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) + xlab("Time of night") +
+  colScale + ylab(Temp.lab) + xlab("Time of night") +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
         strip.text.x = element_blank())
@@ -116,7 +133,7 @@ ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
   geom_point(aes(col=Category), size=3) +
   #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  colScale + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
         strip.text.x = element_blank())
@@ -130,7 +147,7 @@ func_plots <- function(i){
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
   geom_point(aes(col=Category), size=3) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab) +
+  colScale + ylab(Temp.lab) +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
         legend.key.height = unit(3, 'lines')) + xlab("Time")
 }

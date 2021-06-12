@@ -178,26 +178,41 @@ therm_all$Species <- as.factor(therm_all$Species)
 # #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
 
 
-mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
-                     Amb_Temp + 
-                     Category + 
-                     Amb_Temp:Category + 
-                     Species + 
-                     Cap_mass +
-                     Amb_Temp:Species:Category,  
-                     random= ~1|Indiv_numeric/Category, 
-                  correlation=corAR1(form=~1|Indiv_numeric/Category))
+# mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
+#                                Amb_Temp + 
+#                                Category + 
+#                                Amb_Temp:Category + 
+#                                Species + 
+#                                Cap_mass + 
+#                                Year +
+#                                Amb_Temp:Species:Category,  
+#                              random= ~1|Indiv_numeric/Category, 
+#                              correlation=corAR1(form=~1|Indiv_numeric/Category))
 
 ## better AICc
-mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
                                Amb_Temp + 
                                Category + 
                                Amb_Temp:Category + 
                                Species + 
                                Cap_mass +
-                               Species:Category,  
+                               Year +
+                               Species:Category,  ## Different from the previous because this is a two-var term
                              random= ~1|Indiv_numeric/Category, 
                              correlation=corAR1(form=~1|Indiv_numeric/Category))
+
+# 
+# mod_BVD_sp_cor3 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+#                                Amb_Temp + 
+#                                Category + 
+#                                Amb_Temp:Category + 
+#                                Species + 
+#                                Cap_mass +
+#                                #Year +
+#                                Species:Category,
+#                              random= ~1|Indiv_numeric/Category, 
+#                              correlation=corAR1(form=~1|Indiv_numeric/Category))
+
 
 
 # mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
@@ -211,23 +226,25 @@ mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
 #                         correlation=corAR1(form=~1|Indiv_numeric))
 
 
-summary(mod_BVD_sp, correlation=T)
-confint(mod_BVD)
-acf(resid(mod_BVD_sp))
-em <- emmeans(mod_BVD,  ~Species:Category)
+summary(mod_cor, correlation=T)
+intervals(mod_cor)
+acf(resid(mod_cor))
+em <- emmeans(mod_cor,  ~Species:Category)
 em
-em1 <- emmeans(mod_BVD_sp_cor1,  ~Species:Category)
-em1
-summary(mod_BVD_sp_cor1)
-confint(mod_BVD_sp_cor1)
-acf(resid(mod_BVD_sp_cor1))
-em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
-em2
-summary(mod_BVD_sp_cor2)
-confint(mod_BVD_sp_cor2)
-acf(resid(mod_BVD_sp_cor2))
 
-plot(residuals(mod_BVD_sp_cor1),type="b")
+# em1 <- emmeans(mod_BVD_sp_cor1,  ~Amb_Temp:Species:Category)
+# em1
+# summary(mod_BVD_sp_cor1)
+# intervals(mod_BVD_sp_cor1)
+# acf(resid(mod_BVD_sp_cor1))
+# 
+# em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
+# em2
+# summary(mod_BVD_sp_cor2)
+# intervals(mod_BVD_sp_cor2)
+# acf(resid(mod_BVD_sp_cor2))
+
+plot(residuals(mod_cor),type="b")
 abline(h=0,lty=3)
 
 class(summary(mod_BVD_sp_cor2))
@@ -238,9 +255,8 @@ summary(mod_BVD_sp_cor2)$tTable
 plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + my_theme
 
 ## For selecting best model with AIC
-library(MuMIn)
 MuMIn::model.sel(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
-MuMIn::model.sel(mod_BVD_sp_cor1, mod_BVD_sp_cor2)
+MuMIn::model.sel(mod_BVD_sp_cor1, mod_BVD_sp_cor2, mod_BVD_sp_cor3)
 anova(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
 
 
@@ -252,11 +268,11 @@ predict_gam(mod_BVD_sp_cor1, values = list(f1 = c(0.5, 1, 1.5))) %>%
   ggplot(aes(x2, fit)) +
   geom_smooth_ci(f1)
 
-therm_all$fit <- predict(mod_BVD_sp_cor1)
+therm_all$fit <- predict(mod_BVD_sp_cor2)
 
-ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category, Species), col=Category, shape=Species)) + 
+ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), col=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
-  geom_point(alpha = 0.3) + xlab(ATemp.lab) +
+  geom_point(alpha = 0.3) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
   ylab(STemp.lab) +
   my_theme
 
@@ -916,3 +932,9 @@ for(j in 1:length(trial$Categ3)) {
 
 
 ggplot(trial, aes(Time2, Surf_Temp)) + geom_point(aes(col=Category))
+
+## Plotting Ts-Ta vs. Ta
+therm_all$Ts_Ta <- therm_all$Surf_Temp-therm_all$Amb_Temp
+ggplot(therm_all, aes(Amb_Temp, Ts_Ta)) + geom_point(aes(col=Category)) + my_theme + 
+  scale_color_manual(values=my_colors) + xlab(ATemp.lab) + ylab("Ts - Ta") +
+  geom_smooth(aes(col=Category), method='lm')
