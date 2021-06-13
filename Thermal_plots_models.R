@@ -201,29 +201,29 @@ mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                              random= ~1|Indiv_numeric/Category, 
                              correlation=corAR1(form=~1|Indiv_numeric/Category))
 
-# 
-# mod_BVD_sp_cor3 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
-#                                Amb_Temp + 
-#                                Category + 
-#                                Amb_Temp:Category + 
-#                                Species + 
-#                                Cap_mass +
-#                                #Year +
-#                                Species:Category,
-#                              random= ~1|Indiv_numeric/Category, 
-#                              correlation=corAR1(form=~1|Indiv_numeric/Category))
+
+mod_BVD_sp_cor3 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
+                               Amb_Temp +
+                               Category +
+                               Amb_Temp:Category +
+                               Species +
+                               Cap_mass +
+                               #Year +
+                               Species:Category,
+                             random= ~1|Indiv_numeric/Category,
+                             correlation=corAR1(form=~1|Indiv_numeric/Category))
 
 
 
-# mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
-#                           Amb_Temp + 
-#                           Category + 
-#                           Amb_Temp:Category + 
-#                           Species + 
-#                           Cap_mass +
-#                           Species:Category,  
-#                         random= ~1|Indiv_numeric,
-#                         correlation=corAR1(form=~1|Indiv_numeric))
+mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
+                          Amb_Temp +
+                          Category +
+                          Amb_Temp:Category +
+                          Species +
+                          Cap_mass +
+                          Species:Category,
+                        random= ~1|Indiv_numeric,
+                        correlation=corAR1(form=~1|Indiv_numeric))
 
 
 summary(mod_cor, correlation=T)
@@ -241,7 +241,7 @@ em
 # em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
 # em2
 # summary(mod_BVD_sp_cor2)
-# intervals(mod_BVD_sp_cor2)
+intervals(mod_BVD_sp_cor3)
 # acf(resid(mod_BVD_sp_cor2))
 
 plot(residuals(mod_cor),type="b")
@@ -256,7 +256,7 @@ plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + my_
 
 ## For selecting best model with AIC
 MuMIn::model.sel(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
-MuMIn::model.sel(mod_BVD_sp_cor1, mod_BVD_sp_cor2, mod_BVD_sp_cor3)
+MuMIn::model.sel(mod_cor, mod_BVD_sp_cor1, mod_BVD_sp_cor2, mod_BVD_sp_cor3)
 anova(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
 
 

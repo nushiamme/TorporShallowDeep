@@ -33,7 +33,7 @@ em <- emmeans(mod_cor,  ~Species:Category)
 #confint(mod_BVD_sp_cor2)
 acf(resid(mod_cor))
 knitr::kable(em, digits=2)
-knitr::kable(intervals(mod_cor)$, digits=2)
+knitr::kable(intervals(mod_cor)$fixed, digits=2)
 knitr::kable(summary(mod_cor)$tTable, digits=2)
 
 ```
