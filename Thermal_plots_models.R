@@ -112,118 +112,53 @@ plot(mod.surf_amb_noCateg) ## Very skewed qq plot, bad fit
 ## (Amb_Temp|Categ) allows slopes and intercepts to vary by category
 
 ## t test of differences in temp between years
-t.test(therm_all$Amb_Temp[therm_all$Year==17], therm_all$Amb_Temp[therm_all$Year==18])
+t.test(therm_all$Amb_Temp[therm_all$Year==2017], therm_all$Amb_Temp[therm_all$Year==2018])
 
 mean(therm_all$Amb_Temp[therm_all$Year==2017])
 sd(therm_all$Amb_Temp[therm_all$Year==2017], na.rm=TRUE)
 
-## First, multilevel model with random intercepts and fixed slope for all categories
-mod_mixed <- lmer(Surf_Temp ~ Amb_Temp + Category, data=therm_all)
-summary(mod_mixed)
-coef(mod_mixed) ## Useful to see all the slopes and intercepts
-plot(mod_mixed) ## Definitely many clusters of points
-plot(ranef(mod_mixed)) ## plotting random effects of model
-plot(residuals(mod_mixed)) ## plot residuals of model
+mean(therm_all$Amb_Temp[therm_all$Year==2018])
+sd(therm_all$Amb_Temp[therm_all$Year==2018], na.rm=TRUE)
 
-## Random intercepts and random slopes, no species in this equation
-mod_mixed_2 <- glm(Surf_Temp ~ Amb_Temp + Category, data=therm_all)
-summary(mod_mixed_2)
-coef(mod_mixed_2) 
-plot(mod_mixed_2)
-
-## Accounting for species, Random intercepts and random slopes
-mod_mixed_3 <- glm(Surf_Temp ~ Amb_Temp + Category + Species_numeric, data=therm_all)
-summary(mod_mixed_3)
-coef(mod_mixed_3)
-plot(mod_mixed_3)
-
-## Same as above but now including mass.
-## This was the final full (and best) model. Earlier had species and category as fixed effects
-## And used lmer earlier, for mixed effects
-mod_mixed_4 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=therm_all)
-summary(mod_mixed_4)
-coef(mod_mixed_4)
-plot(mod_mixed_4)
-anova(mod_mixed_3, mod_mixed_4)
-qqmath(~resid(mod_mixed_4)) ## Much better!!
-
-## Accounting for individual and species, Random intercepts and random slopes.
-## Gives identical results to above. So Indiv ID doesn't make a difference
-## Ignore.
-mod_mixed_5 <- lmer(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species + 
-                      (1|Indiv_numeric), data=therm_all, REML = FALSE)
-summary(mod_mixed_5)
-coef(mod_mixed_5)
-plot(mod_mixed_5)
-acf(resid(mod_mixed_5))
-
-## Benjamin suggested
-mod_BVD <- lmer(data=therm_all, Surf_Temp ~ Amb_Temp + Category + Amb_Temp:Category + 
-                  Species + Cap_mass + (1|Indiv_numeric) + ## Always keep this
-                  Species:Category + (1|Indiv_numeric:Category))
-                  #Species:Amb_Temp:Category + 
-#(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
-
+#### Linear mixed effects models ####
 therm_all$Species <- as.factor(therm_all$Species)
-# mod_BVD_sp <- lmer(data=therm_all, Surf_Temp ~ 
-#                      Amb_Temp + 
-#                      Category + 
-#                      Amb_Temp:Category + 
-#                      Species + 
-#                      Cap_mass +
-#                      Amb_Temp:Species:Category + 
-#                      #Species:Amb_Temp:Category + ## to allow emmeans to balance category means across species
-#                      (1|Indiv_numeric)  + 
-#                      (1|Indiv_numeric:Category))
-# #(0+Amb_Temp|Indiv_numeric:Category)) ## this might be unnecessary
+
+# 
+# mod_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
+#                                Amb_Temp +
+#                                Category +
+#                                Amb_Temp:Category +
+#                                Species +
+#                                Cap_mass +
+#                                Species:Category,
+#                              random= ~1|Indiv_numeric, ## This term is different
+#                              correlation=corAR1(form=~1|Indiv_numeric)) ## This term is different
+# 
+# mod_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
+#                         Amb_Temp + 
+#                         Category + 
+#                         Amb_Temp:Category + 
+#                         Species + 
+#                         Cap_mass +
+#                         Year +
+#                         Species:Category,
+#                       random= ~1|Indiv_numeric, 
+#                       correlation=corAR1(form=~1|Indiv_numeric))
 
 
-# mod_BVD_sp_cor1 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
-#                                Amb_Temp + 
-#                                Category + 
-#                                Amb_Temp:Category + 
-#                                Species + 
-#                                Cap_mass + 
-#                                Year +
-#                                Amb_Temp:Species:Category,  
-#                              random= ~1|Indiv_numeric/Category, 
-#                              correlation=corAR1(form=~1|Indiv_numeric/Category))
-
-## better AICc
 mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~ 
-                               Amb_Temp + 
-                               Category + 
-                               Amb_Temp:Category + 
-                               Species + 
-                               Cap_mass +
-                               Year +
-                               Species:Category,  ## Different from the previous because this is a two-var term
-                             random= ~1|Indiv_numeric/Category, 
-                             correlation=corAR1(form=~1|Indiv_numeric/Category))
-
-
-mod_BVD_sp_cor3 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
-                               Amb_Temp +
-                               Category +
-                               Amb_Temp:Category +
-                               Species +
-                               Cap_mass +
-                               #Year +
-                               Species:Category,
-                             random= ~1|Indiv_numeric/Category,
-                             correlation=corAR1(form=~1|Indiv_numeric/Category))
+                        Amb_Temp + 
+                        Category + 
+                        Amb_Temp:Category + 
+                        Species + 
+                        Cap_mass +
+                        Year +
+                        Species:Category,
+                      random= ~1|Indiv_numeric/Category, 
+                      correlation=corAR1(form=~1|Indiv_numeric/Category))
 
 
 
-mod_BVD_sp_cor2 <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
-                          Amb_Temp +
-                          Category +
-                          Amb_Temp:Category +
-                          Species +
-                          Cap_mass +
-                          Species:Category,
-                        random= ~1|Indiv_numeric,
-                        correlation=corAR1(form=~1|Indiv_numeric))
 
 
 summary(mod_cor, correlation=T)
@@ -232,54 +167,37 @@ acf(resid(mod_cor))
 em <- emmeans(mod_cor,  ~Species:Category)
 em
 
-# em1 <- emmeans(mod_BVD_sp_cor1,  ~Amb_Temp:Species:Category)
-# em1
-# summary(mod_BVD_sp_cor1)
-# intervals(mod_BVD_sp_cor1)
-# acf(resid(mod_BVD_sp_cor1))
-# 
-# em2 <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
-# em2
-# summary(mod_BVD_sp_cor2)
-intervals(mod_BVD_sp_cor3)
-# acf(resid(mod_BVD_sp_cor2))
-
 plot(residuals(mod_cor),type="b")
 abline(h=0,lty=3)
 
-class(summary(mod_BVD_sp_cor2))
+class(summary(mod_cor))
 
-summary(mod_BVD_sp_cor2)$tTable
+summary(mod_cor)$tTable
 
 ## SO USEFUL interaction effects plot!!
-plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + my_theme
+plot_model(mod_cor, type = "int", terms = "Species*Category")[[1]] + my_theme
 
 ## For selecting best model with AIC
-MuMIn::model.sel(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
-MuMIn::model.sel(mod_cor, mod_BVD_sp_cor1, mod_BVD_sp_cor2, mod_BVD_sp_cor3)
-anova(mod_BVD, mod_BVD_sp_cor1, mod_mixed_5)
+MuMIn::model.sel(mod_cor1, mod_cor2, mod_cor)
+anova(mod_cor1, mod_cor2, mod_cor)
 
+emtrends(mod_cor, ~Species|Category, var="mean(Surf_Temp)")
 
-# em <- emmeans(mod_BVD_sp_cor2,  ~Species:Category)
-# em
-#emtrends(mod_BVD_sp, ~Category, var="")
-
-predict_gam(mod_BVD_sp_cor1, values = list(f1 = c(0.5, 1, 1.5))) %>%
+predict_gam(mod_cor, values = list(f1 = c(0.5, 1, 1.5))) %>%
   ggplot(aes(x2, fit)) +
   geom_smooth_ci(f1)
 
-therm_all$fit <- predict(mod_BVD_sp_cor2)
+therm_all$fit <- predict(mod_cor)
 
 ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), col=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
-  geom_point(alpha = 0.3) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
+  geom_point(alpha = 0.8) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
   ylab(STemp.lab) +
   my_theme
 
-ggplot(fortify(mod_BVD), aes(Amb_Temp, Surf_Temp, color=Category)) +
+ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
   stat_summary(fun.data=mean_se, geom="pointrange") +
   stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
-
 
 ## BVD:
 ##First look at random effects' residual random effects. Then look at Intercept of random effects
@@ -295,7 +213,7 @@ ggplot(fortify(mod_BVD), aes(Amb_Temp, Surf_Temp, color=Category)) +
   ## of giving species with more individual representation more weight
   
   ## A random effect doesn't get a mean estimate, it's variation. Random effects won't for the most part change mean estimates
-  ## Only effect sources of uncertainty.
+  ## Only affect sources of uncertainty.
 
   
   ## confint() help get conf intervals
@@ -311,28 +229,6 @@ ggplot(fortify(mod_BVD), aes(Amb_Temp, Surf_Temp, color=Category)) +
 (1+Amb:Category|Indiv) 
 (1+amb|indiv) ## This means estimating covariance between slopes and intercept also
 (0+amb|indiv) ## 0 means not estimating intercept
-
-## Could scale data set to average amb temp
-data$Amb <- scale(data$Amb)
-
-
-# Testing autocorrelation
-simdat <- start_event(simdat, column="Time", event=c("Subject", "Trial"), label.event="Event")
-head(simdat)
-m4AR1 <- glm(Surf_Temp ~ Amb_Temp + Category + Cap_mass + Species_numeric, data=therm_all
-  
-  Y ~ te(Time, Trial)+s(Subject, bs='re'), data=simdat, rho=r1, AR.start=simdat$start.event)
-
-## Run anova of model. Leaving out mod_mixed here because it doesn't make sense that categories would all have one fixed slope
-an.mod <- anova(mod_mixed_2,mod_mixed_3, mod_mixed_4)
-an.mod
-
-datapoints_raw <- vector()
-datapoints_interpol <- vector()
-for(i in unique(therm_all$pasted)){
-  datapoints_raw[i] <- length(therm_all$Surf_Temp[therm_all$pasted==i])
-  datapoints_interpol[i] <- length(data_interpol$Surf_Temp[data_interpol$Indiv_pasted==i])
-}
 
 
 #### Getting proportion of time each individual spent in each category to run model of proportions ####
