@@ -158,8 +158,9 @@ mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                       correlation=corAR1(form=~1|Indiv_numeric/Category))
 
 
+sapply(therm_all$Surf_Temp, function(n) cor(therm_all$Surf_Temp[n,], therm_all$Surf_Temp[n+1,]))
 
-
+acf(resid(mod_cor), plot=F)
 
 summary(mod_cor, correlation=T)
 intervals(mod_cor)
@@ -189,10 +190,11 @@ predict_gam(mod_cor, values = list(f1 = c(0.5, 1, 1.5))) %>%
 
 therm_all$fit <- predict(mod_cor)
 
+## Plotting Ts ~ Ta with species in shapes and categories in color
 ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), col=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
-  geom_point(alpha = 0.8) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
-  ylab(STemp.lab) +
+  geom_point(alpha = 0.8, size=2) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
+  ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=2))) +
   my_theme
 
 ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
