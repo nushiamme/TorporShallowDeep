@@ -10,15 +10,27 @@ library(segmented) ## Trying out a piecewise regression with this
 library(chron)
 library(gridExtra) ## for seeing interpol and raw plots side by side
 
+
+## Read in file
+therm_all <- read.csv(here("Data", "All_data.csv"))
+
+#### General functions ####
+## Generic plot theme
+my_theme <- theme_classic(base_size = 30) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_theme2 <- theme_classic(base_size = 15) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
+
+
 ## Generic standard error function
 se <- function(dt) {
   sd(dt, na.rm=T) /  
   sqrt(length(dt[!is.na(dt)]))
 }
 
-
-## Read in file
-therm_all <- read.csv(here("Data", "All_data.csv"))
 
 ## Process therm_all dataset for time
 therm_all$Month <- substr(therm_all$Date, 1, 1)
@@ -283,78 +295,3 @@ Rates$Category <- factor(Rates$Category, levels=c("Normothermic", "Shallow Torpo
 ### Rate of change of temperature in deg C/min
 ggplot(Rates, aes(Category, abs(Rate2))) + geom_boxplot(aes(fill=Category), alpha=0.6) + geom_point() + my_theme +
   scale_fill_manual(values=my_colors) + ylab("Rate of temperature change")
-
-
-### Trying to add a rate column to the whole therm_all data frame
-for(i in unique(therm_all$pasted)) {
-  trial <- therm_all[therm_all$pasted==i,]
-  trial$Rate <- NA
-  for(n in 2:length(trial$Surf_Temp)) {
-    trial$Rate[n] <- (trial$Surf_Temp[n] - trial$Surf_Temp[n-1])/trial$Duration2[n]
-  }
-  # for(n in 1:length(trial$Surf_Temp-1)) {
-  #   trial$Rate2[n] <- (trial$Surf_Temp[n+1] - trial$Surf_Temp[n])/trial$Duration[n]
-  # }
-  therm_all$Rate[therm_all$pasted==i] <- trial$Rate
-  #dat$Rate2[dat$pasted==i] <- trial$Rate2
-}
-
-ggplot(therm_all, aes(Category, abs(Rate))) + geom_boxplot(aes(fill=Category), alpha=0.6) + geom_point() + my_theme +
-  scale_fill_manual(values=my_colors) + ylab("Rate of temperature change")
-
-ggplot(therm_all, aes(Category, abs(Rate))) + geom_violin(aes(fill=Category), alpha=0.6) +
-  geom_point(aes(col=Surf_Temp)) + my_theme +
-  scale_color_gradientn(values=rainbow(5)) +
-  scale_fill_manual(values=my_colors) + ylab("Rate of temperature change")
-
-ggplot(therm_all, aes(Category, abs(Rate))) +
-  geom_point(aes(col=Surf_Temp), size=3, alpha=0.6) + my_theme +
-  scale_color_gradientn(colors=rev(rainbow(5))) +
-  theme(panel.background = element_rect(fill = "black"))
-  #scale_fill_manual(values=my_colors) + 
-  ylab("Rate of temperature change")
-
-
-
-for(n in length(therm_all$Rate)) {
-  
-}
-
-ggplot(therm_all, aes(abs(Rate))) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Normothermic",], aes(abs(Rate)), fill=my_colors[1], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Shallow Torpor",], aes(abs(Rate)), fill=my_colors[2], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Transition",], aes(abs(Rate)), fill=my_colors[3], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Deep Torpor",], aes(abs(Rate)), fill=my_colors[4], alpha=0.6) 
-  #geom_point() + 
-  my_theme #+
-  #scale_fill_manual(values=my_colors) #+ 
-  #ylab("Rate of temperature change") + 
-  facet_grid(Category~., scales = "free_y")
-  
-ggplot(therm_all, aes(abs(Rate))) + my_theme +
-  geom_histogram(data=therm_all[therm_all$Category=="Normothermic",], aes(Rate), fill=my_colors[1], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Shallow Torpor",], aes(Rate), fill=my_colors[2], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Transition",], aes(Rate), fill=my_colors[3], alpha=0.6) + 
-  geom_histogram(data=therm_all[therm_all$Category=="Deep Torpor",], aes(Rate), fill=my_colors[4], alpha=0.6) +
-  #stat_density(aes(y=..count..), color="black", fill="blue", alpha=0.3) +
-  scale_y_log10()
-  scale_x_continuous(breaks=c(0,1,2,3,4,5,10,30,100,300,1000), trans="log1p", expand=c(0,0)) +
-  scale_y_continuous(breaks=c(0,100,200,300,400,500,600,700), expand=c(0,0))
-
-
-ggplot(therm_all, aes(abs(Rate))) + my_theme +
-  stat_density(data=therm_all[therm_all$Category=="Normothermic",], aes(Rate), fill=my_colors[1], alpha=0.6) + 
-  stat_density(data=therm_all[therm_all$Category=="Shallow Torpor",], aes(Rate), fill=my_colors[2], alpha=0.6) + 
-  stat_density(data=therm_all[therm_all$Category=="Transition",], aes(Rate), fill=my_colors[3], alpha=0.6) + 
-  stat_density(data=therm_all[therm_all$Category=="Deep Torpor",], aes(Rate), fill=my_colors[4], alpha=0.6) +
-  #stat_density(aes(y=..count..), color="black", fill="blue", alpha=0.3) +
-  scale_x_continuous(breaks=c(0,1,2,3,4,5,10,30,100,300,1000), trans="log1p", expand=c(0,0)) +
-  scale_y_continuous(breaks=c(0,100,200,300,400,500,600,700), expand=c(0,0))
-
-
-ggplot(therm_all, aes(Rate)) + my_theme + facet_grid(Category~., scales = 'free_y') +
-  stat_density(aes(fill=Category)) + coord_flip() +
-  scale_fill_manual(values=my_colors) #+
-  #scale_x_continuous(breaks=c(0,1,2,3,4,5,10,30,100,300,1000), trans="log1p", expand=c(0,0)) +
-  #scale_y_continuous(breaks=c(0,100,200,300,400,500,600,700), expand=c(0,0))
-

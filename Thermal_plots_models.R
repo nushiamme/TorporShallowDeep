@@ -235,16 +235,16 @@ ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
 
 #### Getting proportion of time each individual spent in each category to run model of proportions ####
 ## Summarize proportion of time spent in each state, by species (uses interpolated data)
-data_species_summ <- interpolated %>%
-  count(Species, Category) %>%
-  group_by(Species) %>%
-  mutate(perc = (n / sum(n))*100)
-
-## By individual (uses interpolated data)
-data_indiv_summ <- interpolated %>%
-  group_by(Indiv_pasted, Category) %>%
-  summarise (n = length(Category))
-data_indiv_summ
+# data_species_summ <- interpolated %>%
+#   count(Species, Category) %>%
+#   group_by(Species) %>%
+#   mutate(perc = (n / sum(n))*100)
+# 
+# ## By individual (uses interpolated data)
+# data_indiv_summ <- interpolated %>%
+#   group_by(Indiv_pasted, Category) %>%
+#   summarise (n = length(Category))
+# data_indiv_summ
 
 ## Summarize (binary) whether individuals used a particular category or not
 indiv_categ_count <- ddply(data_indiv_summ, c("Indiv_pasted"), summarise, 

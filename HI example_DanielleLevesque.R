@@ -1,6 +1,4 @@
-setwd("~/Research/1_Manuscripts/2_Tupaia tana/Stats and figures/Mammalian Tb")
-#setwd("~/Documents/Research/1_Manuscripts/2_Tupaia tana/Stats and figures/Mammalian Tb")
-
+## From Danielle Levesque, code for heterothermy index
 library(nlme)
 library(lme4)
 library(MASS)
@@ -8,9 +6,11 @@ library(AICcmodavg)
 library(segmented)
 library(plyr)
 library(calibrate)
+library(dplyr)
 
-read.csv('TupaiaTbfull.csv')->Ttdf
+Ttdf <- read.csv('Data/TupaiaTbfull_DanielleLevesque.csv')
 summary(Ttdf)
+str(Ttdf)
 
 mode <- function(x) {
   ux <- unique(x)
