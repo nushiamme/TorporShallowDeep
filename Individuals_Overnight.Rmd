@@ -5,7 +5,7 @@ date: "5/25/2021"
 output: word_document
 ---
 
-```{r setup, echo=F}
+```{r setup, echo=F,warning=F}
 knitr::opts_chunk$set(fig.width=20, fig.height=8) 
 library(ggplot2)
 library(stringr)
@@ -70,22 +70,22 @@ dfSummary(therm_all, plain.ascii = FALSE, style = "grid",
           graph.magnif = 0.75, valid.col = FALSE)
 ```
 
-All individuals, faceted by species
 ```{r, echo=F, fig.width=20, fig.height=24}
 ##Plots
+# All individuals, faceted by species
 # All individuals in one plot
-ggplot(therm_all, aes(Time2, Surf_Temp)) + my_theme2 +
-  facet_grid(Species~.) +
-  geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
-  geom_point(aes(col=Category), size=3) +
-  colScale + ylab(Temp.lab) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-        legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
-        strip.text.x = element_blank())
+# ggplot(therm_all, aes(Time2, Surf_Temp)) + my_theme2 +
+#   facet_grid(Species~.) +
+#   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +
+#   geom_point(aes(col=Category), size=3) +
+#   colScale + ylab(Temp.lab) +
+#   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+#         legend.key.height = unit(3, 'lines'), strip.background = element_blank(),
+#         strip.text.x = element_blank())
 ```
 
 ```{r echo=F}
-## RIHU all in one plot
+## All individuals within a species in one plot per species
 func_plots <- function(i){
   ggplot(therm_all[therm_all$Species==i,], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~Species) +
   geom_line(aes(group=Indiv_numeric, col=Categ2), size=1) +

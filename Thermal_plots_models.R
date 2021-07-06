@@ -158,7 +158,7 @@ mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                       correlation=corAR1(form=~1|Indiv_numeric/Category))
 
 
-sapply(therm_all$Surf_Temp, function(n) cor(therm_all$Surf_Temp[n,], therm_all$Surf_Temp[n+1,]))
+#sapply(therm_all$Surf_Temp, function(n) cor(therm_all$Surf_Temp[n,], therm_all$Surf_Temp[n+1,]))
 
 acf(resid(mod_cor), plot=F)
 
@@ -167,6 +167,7 @@ intervals(mod_cor)
 acf(resid(mod_cor))
 em <- emmeans(mod_cor,  ~Species:Category)
 em
+summary(mod_cor)
 
 plot(residuals(mod_cor),type="b")
 abline(h=0,lty=3)
@@ -175,18 +176,18 @@ class(summary(mod_cor))
 
 summary(mod_cor)$tTable
 
-## SO USEFUL interaction effects plot!!
+## SO USEFUL interaction effects plot!! Not working now
 plot_model(mod_cor, type = "int", terms = "Species*Category")[[1]] + my_theme
 
 ## For selecting best model with AIC
-MuMIn::model.sel(mod_cor1, mod_cor2, mod_cor)
-anova(mod_cor1, mod_cor2, mod_cor)
+# MuMIn::model.sel(mod_cor1, mod_cor2, mod_cor)
+# anova(mod_cor1, mod_cor2, mod_cor)
 
 emtrends(mod_cor, ~Species|Category, var="mean(Surf_Temp)")
 
-predict_gam(mod_cor, values = list(f1 = c(0.5, 1, 1.5))) %>%
-  ggplot(aes(x2, fit)) +
-  geom_smooth_ci(f1)
+# predict_gam(mod_cor, values = list(f1 = c(0.5, 1, 1.5))) %>%
+#   ggplot(aes(x2, fit)) +
+#   geom_smooth_ci(f1)
 
 therm_all$fit <- predict(mod_cor)
 
@@ -408,6 +409,7 @@ coef(mod_glm_freq_sp)
 ## But the dispersion parameter is still 12.5, which is much greater than 1, meaning it's overdispersed
 mod_glm_freq_sp_quasi <- glm(freq~variable*Species-1, data=m.prop, family=quasipoisson())
 summary(mod_glm_freq_sp_quasi)
+coef(mod_glm_freq_sp_quasi)
 
 ## Running  a negative binomial model, definitely the best. No overdispserion now, much lower residual variance.
 mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop_dur)
@@ -520,7 +522,7 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) +
 
 ## Figure 4  using model outputs!!
 ## library(sjPlot)
-plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] + 
+plot_model(mod_cor, type = "int", terms = "Species*Category")[[1]] + 
   my_theme +
   geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
              inherit.aes = F) +
@@ -532,7 +534,7 @@ plot_model(mod_BVD_sp_cor2, type = "int", terms = "Species*Category")[[1]] +
 
 
 ## Line plots of mean and SD per category and species
-plot_model(mod_BVD_sp_cor2, type = "int", terms = "Category*Species", line.size=1.3,
+plot_model(mod_cor, type = "int", terms = "Species*Category", line.size=1.3,
            point.size=1.3)[[2]] +
   my_theme + #scale_x_discrete(expand=c(0.1, 0.2)) +
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
@@ -540,11 +542,11 @@ plot_model(mod_BVD_sp_cor2, type = "int", terms = "Category*Species", line.size=
 
 
 ## Random effects
-plot_model(mod_BVD, type = "re", aes(color=Category))
+plot_model(mod_cor, type = "re", aes(color=Category))
 plot_grid(p)
 
 #library(ggeffects)
-dfpred <- ggpredict(mod_BVD, terms = c("Amb_Temp","Category", "Species"))
+dfpred <- ggpredict(mod_cor, terms = c("Amb_Temp","Category", "Species"))
 ggplot(dfpred, aes(x, predicted)) + my_theme +
   geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
              inherit.aes = F) +
@@ -567,7 +569,7 @@ ggplot(dfpred, aes(group, predicted)) + my_theme +
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   ggtitle("")
 
-dfpred2 <- ggpredict(mod_BVD, terms = c("Species","Category"))
+dfpred2 <- ggpredict(mod_cor, terms = c("Species","Category"))
 plot(dfpred2, add.data = T, line.size=1.5, dot.alpha=0.2) + scale_colour_manual(values=my_colors) +
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
   ggtitle("") + my_theme + theme(legend.key.height =  unit(3, 'lines'))

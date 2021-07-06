@@ -9,6 +9,7 @@ library(stringr) ## To pad a cell with zeros (str_pad function)
 library(segmented) ## Trying out a piecewise regression with this
 library(chron)
 library(gridExtra) ## for seeing interpol and raw plots side by side
+library(MASS) ## To check the distribution of the data and run glm.nb
 
 
 ## Read in file
@@ -171,8 +172,34 @@ names(m.prop_dur2)[names(m.prop_dur2) == 'value'] <- 'freq'
 m.prop_dur2$Species <- substr(m.prop_dur2$pasted, 1, 4)
 m.prop_dur2$Species <- as.factor(as.character(m.prop_dur2$Species))
 
+duration_categ_summ <- as.data.frame(m.prop_dur %>%
+                                       group_by(pasted, variable) %>%
+                                       summarise(CategDuration = sum(freq, na.rm=T)))
+
+indiv_categ_summ <- as.data.frame(duration_categ_summ %>%
+                                       group_by(pasted, variable) %>%
+                                       summarise(Categories = count(variable, na.rm=T)))
+
+duration_categ_spp <- as.data.frame(m.prop_dur %>%
+                                       group_by(Species, variable) %>%
+                                       summarise(CategDuration = mean(freq, na.rm=T)))
 
 
+duration_categ_summ <- duration_categ_summ[duration_categ_summ$CategDuration>0,]
+nrow(duration_categ_summ[duration_categ_summ$variable=="Normothermic",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Shallow Torpor",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Transition",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Deep Torpor",])
+
+#### Write to csv ####
+names(m.prop_dur2) <- c("pasted", "variable", "freq2", "Species", "predicted2")
+m.prop_dur_both <- merge(m.prop_dur, m.prop_dur2, by = c("pasted", "variable", "Species"))
+write.csv(m.prop_dur_both, file = here("Data", "Prop_Duration_Categories.csv"))
+
+
+
+
+#### Models ####
 ## This model has residual deviance >> degrees of freedom
 mod_glm_freq_sp <- glm(freq~variable*Species-1, data=m.prop_dur, family=poisson())
 summary(mod_glm_freq_sp)
@@ -202,10 +229,11 @@ coef(mod_glm_freq_sp_nb2)
 m.prop_dur2$predicted <- predict(mod_glm_freq_sp_nb2)
 plot(mod_glm_freq_sp_nb2)
 
+emmeans(mod_glm_freq_sp_nb,specs=~variable*Species)
 
 
-
-## Fig 6a.2 Prop of time using duration: Using predicted values
+#### Figures ####
+## Fig 6a Prop of time using duration: Using predicted values
 m.prop_dur_plot <- ggplot(m.prop_dur, aes(Species,freq)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
@@ -214,7 +242,7 @@ m.prop_dur_plot <- ggplot(m.prop_dur, aes(Species,freq)) + my_theme + geom_bar(a
   #guides(colour = guide_legend(override.aes = list(size=3))) +
   #theme(legend.key.height = unit(3, 'lines'))
 
-## Figure 6b.2: Using predicted values
+## Figure 6b: Using predicted values
 m.prop_dur_pred_plot <- ggplot(m.prop_dur, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
