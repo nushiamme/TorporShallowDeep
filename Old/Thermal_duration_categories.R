@@ -1,6 +1,7 @@
 ## Code to interpolate thermal data to ensure even sampling across the night
 ## Shallow-deep torpor paper 
 ## Anusha Shankar, nushiamme<@>gmail<dot>com
+## IGNORE this script, it's been folded into the "Thermal_plots_models.R" script
 
 ## Read in packages
 library(here)
@@ -59,7 +60,7 @@ therm_all <- therm_all[order(as.POSIXct(therm_all$DateFormat, format="%Y-%m-%d %
 
 therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 
-################ Duration not interpolation #############
+################ Duration of time spent per category #############
 
 ## What was night length in minutes per individual?
 Nightlength_raw <- vector()

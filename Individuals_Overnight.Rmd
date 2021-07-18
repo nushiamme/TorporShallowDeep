@@ -1,5 +1,5 @@
 ---
-title: "Individuals Overnight"
+title: "Supplement 2_Individuals Overnight"
 author: "Anusha Shankar"
 date: "5/25/2021"
 output: word_document
@@ -11,11 +11,7 @@ library(ggplot2)
 library(stringr)
 library(summarytools)
 
-#here <- here::here
 wd <- "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\"
-thermal_maxes_melted <- read.csv(paste0(wd, "Thermal_maxes.csv")) ## Raw temperatures
-
-# Other files
 categories <- read.csv(paste0(wd, "Category_thresholds.csv"))
 therm_all <- read.csv(paste0(wd, "All_data.csv"))
 

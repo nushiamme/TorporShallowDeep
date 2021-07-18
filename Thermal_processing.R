@@ -1,5 +1,7 @@
 #### Code description ####
-## Shallow-deep torpor paper: Processing data for use in the models
+## Shallow-deep torpor paper: Processing data for use in the models:
+## Read in rds files and add in date and categories
+## Output is All_data.csv
 ## Paper authors: A Shankar, INH Cisneros, S Thompson, CH Graham, DR Powers
 ## Code author: A Shankar
 ## Contact: nushiamme<at>gmail<dot>com

@@ -14,7 +14,7 @@ library(MASS) ## To check the distribution of the data and run glm.nb
 #getwd()
 here <- here::here
 therm_all <- read.csv(here("..", "..", "Data", "All_data.csv"))
-m.prop_dur_both <- read.csv(here("..", "..", "Data", "Prop_Duration_Categories.csv"))
+m.prop_dur <- read.csv(here("..", "..", "Data", "Prop_Duration_Categories.csv"))
 head(therm_all)
 
 therm_all$Category <- factor(therm_all$Category, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
@@ -31,8 +31,6 @@ mod_cor <- nlme::lme(data=therm_all, fixed=Surf_Temp ~
                              random= ~1|Indiv_numeric/Category, 
                              correlation=corAR1(form=~1|Indiv_numeric/Category))
 em <- emmeans(mod_cor,  ~Species:Category)
-#summary(mod_BVD_sp_cor2)
-#confint(mod_BVD_sp_cor2)
 acf(resid(mod_cor))
 knitr::kable(em, digits=2)
 knitr::kable(intervals(mod_cor)$fixed, digits=2)
@@ -40,10 +38,10 @@ knitr::kable(summary(mod_cor)$tTable,  digits = c(2,2,0,2,35))
 
 
 ## Models for proportion of night spent in each category ##
-m.prop_dur_both$variable <- factor(m.prop_dur_both$variable, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
+m.prop_dur$variable <- factor(m.prop_dur$variable, levels=c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 
 ## This model has residual deviance >> degrees of freedom
-mod_glm_freq_sp <- glm(freq~variable*Species-1, data=m.prop_dur_both, family=poisson())
+mod_glm_freq_sp <- glm(freq~variable*Species-1, data=m.prop_dur, family=poisson())
 knitr::kable(summary(mod_glm_freq_sp)$tTable, digits=2)
 knitr::kable(emmeans(mod_glm_freq_sp,specs=~variable*Species), digits=2)
 # coef(mod_glm_freq_sp)
@@ -54,10 +52,7 @@ knitr::kable(emmeans(mod_glm_freq_sp,specs=~variable*Species), digits=2)
 # summary(mod_glm_freq_sp_quasi)
 
 ## Running  a negative binomial model, definitely the best. No overdispserion now, much lower residual variance.
-mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop_dur_both)
+mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop_dur)
 knitr::kable(emmeans(mod_glm_freq_sp_nb,specs=~variable*Species), digits=2)
 coef(mod_glm_freq_sp_nb)
-
-
-
 ```
