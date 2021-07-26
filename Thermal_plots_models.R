@@ -411,3 +411,33 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
   guides(colour = guide_legend(override.aes = list(size=3))) +
   theme(legend.key.height = unit(3, 'lines'))
 
+
+
+
+#### TRYING out Heterothermy Index ####
+## HI = sqrt((sum((Tb_opt - Tb_i)^2))/n-1)
+Tb_opt <- unique(therm_all$Surf_Temp)[which.max(tabulate(match(therm_all$Surf_Temp, unique(therm_all$Surf_Temp))))] ## get mode of values
+hi_all <- as.data.frame(therm_all %>%
+  group_by(pasted) %>%
+  mutate(HI = sqrt((sum((Tb_opt - Surf_Temp)^2))/length(Surf_Temp)-1))) %>%
+  distinct(pasted, .keep_all=TRUE)
+hi_all
+
+
+ggplot(hi_all, aes(Species, HI)) + geom_boxplot() + my_theme
+
+for(i in unique(therm_all$pasted)) {
+  trial <- therm_all[therm_all$pasted==i,]
+  for(n in 1:(length(trial$Surf_Temp)-1)) {
+TTUF01df$HITb<-((39.117-TTUF01df$Tb)^2)
+
+TTUF01HI<-ddply(TTUF01df, .(Day ),summarize,
+                HIsum= sum(HITb), 
+                HIcount= length(HITb))
+
+TTUF01HI <- subset(TTUF01HI, HIcount>30)
+TTUM03HI$HI <- sqrt(TTUM03HI$HIsum/(TTUM03HI$HIcount-1))
+
+plot(TTUF01HI$Day, TTUF01HI$HI)
+  }
+}
