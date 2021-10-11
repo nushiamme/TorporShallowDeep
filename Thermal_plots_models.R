@@ -37,7 +37,7 @@ thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw tempe
 
 # Other files
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
-interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 10 min
+#interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 10 min
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
 therm_all <- read.csv(here("Data", "All_data.csv"))
@@ -159,9 +159,10 @@ emtrends(mod_cor, ~Species|Category, var="mean(Surf_Temp)")
 
 therm_all$fit <- predict(mod_cor)
 
-## Plotting Ts ~ Ta with species in shapes and categories in color
+## Figure 3: Plotting Ts ~ Ta with species in shapes and categories in color
 ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), col=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
+  geom_abline(linetype='dashed') +
   geom_point(alpha = 0.8, size=2) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
   ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=2))) +
   my_theme

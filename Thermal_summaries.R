@@ -5,18 +5,18 @@
 ## Code author: A Shankar
 ## Contact: nushiamme<at>gmail<dot>com
 
-#### Do not need to run again unless base thermal files change! Time consuming! ####
+#### Do not need to run again unless base thermal files change! This script is time consuming! ####
 
 #### Read in packages and set working directory ####
 library(reshape2)
 wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
 
-
+###  MAHU07_0531 from 2018 was missing, added in on Oct 7, 2018
 #### Bird folders ####
 bird.folders.2018 <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607", "BCHU05_0607",
                        "BLHU01_0521", "BLHU03_0522", "BLHU04_0523", "BLHU05_0523", "BLHU06_0526", "BLHU07_0529", "BLHU08_0601", 
                        "BLHU09_0603", "BLHU12_0605", "BLHU13_0605", 
-                       "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606")
+                       "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU07_0531", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606")
 
 bird.folders.2017 <- c("BC01_0610", "BC02_0612", "BC03_0617",
                        "BL01_0610", "BL02_0612", "BL03_0614", "BL04_0615",
@@ -25,7 +25,7 @@ bird.folders.2017 <- c("BC01_0610", "BC02_0612", "BC03_0617",
 bird.folders.all <- c("BCHU01_0521", "BCHU02_0526", "BCHU03_0530", "BCHU04_0607", #"BCHU05_0607",
                       "BLHU01_0521", "BLHU03_0522", "BLHU04_0523", "BLHU05_0523", "BLHU06_0526", "BLHU07_0529", "BLHU08_0601", 
                       "BLHU09_0603", "BLHU12_0605", "BLHU13_0605", 
-                      "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606",
+                      "MAHU02_0520", "MAHU03_0527", "MAHU05_0529", "MAHU06_0530", "MAHU07_0531", "MAHU10_0603", "MAHU12_0606", "MAHU13_0606",
                       "BC01_0610", "BC02_0612", "BC03_0617",
                       "BL01_0610", "BL02_0612", "BL03_0614", "BL04_0615",
                       "MA02_0611", "MA05_0615", "MA06_0616", "MA07_0617", "MA08_0619")
@@ -99,8 +99,8 @@ for(i in bird.folders.all) {
 
 m.all_thermal <- melt(all_thermal, na.rm=T)
 ## Change Indiv_IDs to match latest convention names for MAHU -> RIHU and BLHU -> BLUH
-m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Individual) ## Changing species code for RIHU from MAHU to RIHU
-m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
+#m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Individual) ## Changing species code for RIHU from MAHU to RIHU
+#m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
 
 setwd("E:/Google Drive/IR_2018_csv/Data")
 write.csv(m.all_thermal,file = "Thermal_maxes.csv")
