@@ -102,6 +102,5 @@ m.all_thermal <- melt(all_thermal, na.rm=T)
 #m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Individual) ## Changing species code for RIHU from MAHU to RIHU
 #m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
 
-setwd("E:/Google Drive/IR_2018_csv/Data")
-write.csv(m.all_thermal,file = "Thermal_maxes.csv")
+write.csv(m.all_thermal,file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\Thermal_maxes.csv")
 ## m.all_amb <- melt(all_amb,na.rm=T) ## If you want just ambient temperatures

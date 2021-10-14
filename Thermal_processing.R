@@ -21,7 +21,6 @@ library(plyr)
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
 here <- here::here
-setwd("C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data")
 thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
 
 # Other files
@@ -63,9 +62,9 @@ for(i in bird.folders.all) {
   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
   out_all <- rbind(out,out_all)
 }
-dim(out_all) ## Check dimensions, should be ~ 9909 by 6
+dim(out_all) ## Check dimensions, should be ~ 9909 without MAHU07_0531 and 10108 with all 34 birds, by 6
 out_all <- out_all[complete.cases(out_all),] ## Remove rows with NAs
-dim(out_all) ## Check dimensions, now 6309 by 6
+dim(out_all) ## Check dimensions, now 6309 by 6/6471 by 6
 out_amb <- out_all[out_all$variable=="Min",] ## Make a separate data frame with just minimum (~= ambient) values
 #out_mean <- out_all[out_all$variable=="Mean",] ## Make a separate data frame with just mean Ts values
 out_max <- out_all[out_all$variable=="Max",] ## Make a separate data frame with just maximum (~= surface) values
@@ -141,3 +140,24 @@ out_full$pasted <- paste(out_full$Indiv_ID, "_", as.character(str_pad(out_full$D
 
 write.csv(out_full, file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\All_data.csv")
 
+
+##Structuring time
+birdTime <- out_full$Time
+TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
+TimeOrder2 <- seq(from = 100, to = 559, by = 1)
+TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
+TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
+
+birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
+out_full$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
+
+ggplot(out_full[out_full$pasted=="RIHU07_053118",], aes(Time2, Surf_Temp)) + my_theme2 +
+  geom_line(aes(group=pasted), size=1) +
+  geom_line(aes(y=Amb_Temp, group=pasted), linetype="dashed") +
+  geom_point(aes(col=Category), size=2) +
+  theme(axis.text.x = element_text(angle=90), 
+        panel.grid.major.y = element_line(colour="grey", size=0.5)) +
+  scale_y_continuous(breaks = c(5,10,13,15,20,21,22,23,24,25,26,27,28,29,30,35)) +
+  #geom_text(aes(label=Surf_Temp)) +
+  #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
+  scale_color_manual(values=my_colors) + ylab(Temp.lab)
