@@ -13,9 +13,9 @@
 
 
 #### Read in packages ####
-library(here)
 library(plyr) ## Load this before loading dplyr (so that some functions in dplyr aren't masked)
 library(dplyr) ## for summarize 
+library(here)
 library(reshape2) ## for dcast() function 
 library(MASS) ## To check the distribution of the data and run glm.nb
 library(ggplot2)
@@ -320,7 +320,7 @@ for(i in single) {
 
 therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 
-## Figure 4: Surface vs ambient temperature, with one linear model fitted to each category
+## Figure 3: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
 ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
@@ -333,7 +333,7 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape
   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) 
 
-## Figure 4 tweaking: Surface vs ambient temperature, with one linear model fitted to each category
+## Figure 3 tweaking: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
 ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + 
@@ -380,8 +380,8 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) +
 # 
 # 
 
-## Figure 5: Range of max surface temperatures per individual (or per night), colored by category
-ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
+## Figure 4a: Range of max surface temperatures per individual (or per night), colored by category
+ggplot(therm_all, aes(pasted, Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
   facet_grid(.~Species, scales = "free_x",space = "free_x") +
   ylab(Temp.lab) + xlab("Individual") + 
   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
@@ -390,8 +390,8 @@ ggplot(thermal_maxes_melted, aes(variable, value)) + my_theme + geom_point(aes(c
   theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
         legend.key.height = unit(3, 'lines'))
 
-## Figure 6: Stacked bar for proportion of nighttime spent in each category per species
-## Figure 6a using original (non-model) interpolated values
+## Figure 4: Stacked bar for proportion of nighttime spent in each category per species
+## Figure 4b1 using original values
 m.categ <- melt(categ_percentage, id.vars="Species", measure.vars = c("Normothermic", "Shallow_torpor", "Transition", "Torpor"))
 m.categ$variable <- revalue(m.categ$variable, c("Shallow_torpor"="Shallow Torpor", "Torpor"="Deep Torpor"))
 ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
@@ -403,7 +403,7 @@ ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), po
   theme(legend.key.height = unit(3, 'lines'))
 
 
-## Figure 6b: Using predicted values
+## Figure 4b2: Using predicted values
 ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
@@ -411,8 +411,6 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
   scale_y_continuous(labels = percent_format()) +
   guides(colour = guide_legend(override.aes = list(size=3))) +
   theme(legend.key.height = unit(3, 'lines'))
-
-
 
 
 #### TRYING out Heterothermy Index ####

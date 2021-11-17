@@ -9,6 +9,7 @@
 
 #### Read in packages and set working directory ####
 library(reshape2)
+library(dplyr)
 wd <- file.path("E:", "Google Drive", "IR_2018_csv", "Data")
 
 ###  MAHU07_0531 from 2018 was missing, added in on Oct 7, 2018
@@ -75,6 +76,9 @@ for(i in bird.folders.all) {
   }
 }
 
+
+#### Don't really need all this, here onwards ###
+
 ## Compiling all the RDS files into a single list, to then summarize the temperatures
 all_thermal <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
 colnames(all_thermal) <- bird.folders.all
@@ -98,9 +102,11 @@ for(i in bird.folders.all) {
 
 
 m.all_thermal <- melt(all_thermal, na.rm=T)
+m.all_thermal$Species <- substr(m.all_thermal$variable, 1, 4) ## Making a species column
+m.all_thermal <- dplyr::rename(m.all_thermal, c(Indiv_ID = variable, Surf_Temp = value))
 ## Change Indiv_IDs to match latest convention names for MAHU -> RIHU and BLHU -> BLUH
-#m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Individual) ## Changing species code for RIHU from MAHU to RIHU
-#m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
+m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU
+m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
 
 write.csv(m.all_thermal,file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\Thermal_maxes.csv")
 ## m.all_amb <- melt(all_amb,na.rm=T) ## If you want just ambient temperatures
