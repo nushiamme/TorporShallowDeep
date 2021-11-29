@@ -136,7 +136,7 @@ ggplot(therm_all[therm_all$Species=="BCHU",], aes(Time2, Surf_Temp)) +
 ```
 
 All individuals, one plot each
-```{r echo=F}
+```{r echo=F, fig.width=24, fig.height=10}
 ## Faceted by individual
 func_plots <- function(i){
   ggplot(therm_all[therm_all$Indiv_numeric==i,], aes(Time2, Surf_Temp)) + my_theme2 + facet_grid(.~pasted) +
@@ -144,8 +144,9 @@ func_plots <- function(i){
   geom_point(aes(col=Category), size=3) +
   geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
   colScale + ylab(Temp.lab) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(),
-        legend.key.height = unit(3, 'lines')) + xlab("Time")
+  theme(axis.text.x = element_text(size = 20,  angle=90, hjust=0.5),
+        legend.key.height = unit(3, 'lines')) + xlab("Time") +
+    scale_x_discrete(guide = guide_axis(n.dodge = 2))
 }
 lapply(unique(therm_all$Indiv_numeric), func_plots)
 ```

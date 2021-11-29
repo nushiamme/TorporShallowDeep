@@ -28,16 +28,16 @@ library(lattice) ## qqplot to look at lmer model residuals
 library(stringr) ## To pad a cell with zeros (str_pad function)
 library(emmeans)
 library(lubridate)
+library(gridExtra)
 
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
 # Can remake this thermal melted file if needed by running the Thermal_summaries.R script
 here <- here::here
-thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
+#thermal_maxes_melted <- read.csv(here("Data", "Thermal_maxes.csv")) ## Raw temperatures
 
 # Other files
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
-#interpolated <- read.csv(here("Data", "Interpolated_Thermal.csv")) ## Temperatures interpolated to 10 min
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
 therm_all <- read.csv(here("Data", "All_data.csv"))
@@ -60,10 +60,10 @@ ATemp.lab <- expression(atop(paste("Ambient Temperature (", degree,"C)")))
 
 ## Standardize the color scheme
 my_colors <- c("#23988aff", "#F38BA8", "#440558ff", "#9ed93aff")
-my_gradient <- c("#823de9", "#7855ce", "#6e6eb2", "#648697", "#599e7c", "#4fb760", "#45cf45") ## Keep only if doing Categ*Sp temp plot
-my_gradient2 <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7", 
-                  "#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD", 
-                  "#D14285", "#6DDE88", "#652926", "#7FDCC0", "#C84248", "#8569D5", "#5E738F", "#D1A33D", 
+#my_gradient <- c("#823de9", "#7855ce", "#6e6eb2", "#648697", "#599e7c", "#4fb760", "#45cf45") ## Keep only if doing Categ*Sp temp plot
+my_gradient2 <- c("#89C5DA", "#DA5724", "#74D944", "#CE50CA", "#3F4921", "#C0717C", "#CBD588", "#5F7FC7",
+                  "#673770", "#D3D93E", "#38333E", "#508578", "#D7C1B1", "#689030", "#AD6F3B", "#CD9BCD",
+                  "#D14285", "#6DDE88", "#652926", "#7FDCC0", "#C84248", "#8569D5", "#5E738F", "#D1A33D",
                   "#8A7C64", "#599861")
 
 
@@ -81,13 +81,19 @@ therm_all$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
 
 
 ## Structuring time and Date
-therm_all$Month <- substr(therm_all$Date, 1, 1)
+therm_all$Month <- as.numeric(substr(therm_all$Date, 1, 1))
 therm_all$Day <- as.numeric(substr(therm_all$Date, 2, 3))
 therm_all$Year <-as.numeric(paste0("20",therm_all$Year))
 therm_all$Minute <- as.numeric(str_sub(therm_all$Time, -2))
 therm_all$Hour2 <- therm_all$Hour
 therm_all$Hour2[therm_all$Hour==24] <- 0
-therm_all$Day[therm_all$Hour2<7] <- therm_all$Day[therm_all$Hour2<7]+1
+therm_all$Day[therm_all$Hour2<7 & therm_all$Day<31] <- therm_all$Day[therm_all$Hour2<7 & therm_all$Day<31]+1
+therm_all$Month[therm_all$Day==31 & therm_all$Hour2<7] <- therm_all$Month[therm_all$Day==31 & therm_all$Hour2<7]+1
+therm_all$Day[therm_all$Hour2<7 & therm_all$Day==31] <- 1
+
+
+therm_all[therm_all$pasted=="RIHU07_053118",]
+
 therm_all$DateFormat <- as.POSIXct(paste(paste(therm_all$Year, therm_all$Month, therm_all$Day, sep = "-"), 
                                          paste(str_pad(therm_all$Hour2, width=2, side="left", pad="0"), 
                                                str_pad(therm_all$Minute, width=2, side="left", pad="0"), "00", sep = ":"), sep=" "),
@@ -97,20 +103,6 @@ therm_all$TimeFormat <- as.POSIXct(paste(str_pad(therm_all$Hour2, width=2, side=
                                    format='%H:%M')
 
 therm_all <- therm_all[order(as.POSIXct(therm_all$DateFormat, format="%Y-%m-%d %H:%M")),]
-
-
-################ Duration of time spent per category #############
-
-## What was night length in minutes per individual?
-Nightlength_raw <- vector()
-Nightlength_interpol <- vector()
-for(i in unique(therm_all$pasted)) {
-  Nightlength_raw[i] <- difftime(tail(therm_all$DateFormat[therm_all$pasted==i], n=1), head(therm_all$DateFormat[therm_all$pasted==i], n=1), units='mins')
-  Nightlength_interpol[i] <- difftime(tail(data_interpol$Time[data_interpol$Indiv_pasted==i], n=1), 
-                                      head(data_interpol$Time[data_interpol$Indiv_pasted==i], n=1), units='mins')
-}
-Nightlength_raw
-Nightlength_raw <- data.frame(pasted= names(Nightlength_raw), NightLength = Nightlength_raw)
 
 
 #### Models of Surface temperature vs. ambient temperature ####
@@ -155,21 +147,22 @@ plot(residuals(mod_cor),type="b")
 abline(h=0,lty=3)
 summary(mod_cor)$tTable
 
-emtrends(mod_cor, ~Species|Category, var="mean(Surf_Temp)")
+#emtrends(mod_cor, ~Species|Category, var="mean(Surf_Temp)")
 
 therm_all$fit <- predict(mod_cor)
 
 ## Figure 3: Plotting Ts ~ Ta with species in shapes and categories in color
-ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), col=Category, shape=Species)) + 
+ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
   geom_abline(linetype='dashed') +
-  geom_point(alpha = 0.8, size=2) + xlab(ATemp.lab) + scale_color_manual(values = my_colors) +
-  ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3)), color = guide_legend(override.aes = list(size=2))) +
+  geom_point(alpha = 0.6, size=3, color='grey30') + xlab(ATemp.lab) + scale_fill_manual(values = my_colors) +
+  scale_shape_manual(values = c(21, 22, 24)) +
+  ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3, fill='black')), color = guide_legend(override.aes = list(size=2))) +
   my_theme
 
-ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
-  stat_summary(fun.data=mean_se, geom="pointrange") +
-  stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
+# ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
+#   stat_summary(fun.data=mean_se, geom="pointrange") +
+#   stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
 
 #### Calculate proportion of the night spent in each thermal category ####
 ## Measure duration in each category (in minutes)
@@ -220,21 +213,20 @@ duration_categ_summ <- as.data.frame(m.prop_dur %>%
                                        group_by(pasted, variable) %>%
                                        summarise(CategDuration = sum(freq, na.rm=T)))
 
-indiv_categ_summ <- as.data.frame(duration_categ_summ %>%
-                                    group_by(pasted, variable) %>%
-                                    summarise(Categories = count(variable, na.rm=T)))
+# indiv_categ_summ <- as.data.frame(duration_categ_summ %>%
+#                                     group_by(pasted, variable) %>%
+#                                     summarise(Categories = count(variable, na.rm=T)))
 
 duration_categ_spp <- as.data.frame(m.prop_dur %>%
                                       group_by(Species, variable) %>%
                                       summarise(CategDuration = mean(freq, na.rm=T)))
 
-
 duration_categ_summ <- duration_categ_summ[duration_categ_summ$CategDuration>0,]
 # Check that they make sense
-# nrow(duration_categ_summ[duration_categ_summ$variable=="Normothermic",])
-# nrow(duration_categ_summ[duration_categ_summ$variable=="Shallow Torpor",])
-# nrow(duration_categ_summ[duration_categ_summ$variable=="Transition",])
-# nrow(duration_categ_summ[duration_categ_summ$variable=="Deep Torpor",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Normothermic",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Shallow Torpor",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Transition",])
+nrow(duration_categ_summ[duration_categ_summ$variable=="Deep Torpor",])
 
 #### Write to csv ####
 write.csv(m.prop_dur, file = here("Data", "Prop_Duration_Categories.csv"))
@@ -323,7 +315,7 @@ therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 ## Figure 3: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
-ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=2.5) + my_theme +
+ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=3, alpha=0.8) + my_theme +
   scale_y_continuous(breaks = seq(0,40,5)) +
   scale_colour_manual(values=my_colors) +
   geom_smooth(aes(group=Category, col=Categ_Sp),method='lm') +
@@ -381,30 +373,39 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) +
 # 
 
 ## Figure 4a: Range of max surface temperatures per individual (or per night), colored by category
-ggplot(therm_all, aes(pasted, Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
+# ggplot(therm_all, aes(pasted, Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
+#   facet_grid(.~Species, scales = "free_x",space = "free_x") +
+#   ylab(Temp.lab) + xlab("Individual") + 
+#   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
+#   scale_color_manual(values=my_colors) +
+#   guides(colour = guide_legend(override.aes = list(size=3.5))) +
+#   theme(axis.text.x = element_text(angle=30, size=15, vjust=1, hjust=1), axis.text.y=element_text(size=20),
+#         legend.key.height = unit(3, 'lines'))
+
+#Fig. 4a with numeric individual IDs instead of full IDs
+fig.4a <- ggplot(therm_all, aes(as.factor(as.numeric(Indiv_numeric)), Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
   facet_grid(.~Species, scales = "free_x",space = "free_x") +
   ylab(Temp.lab) + xlab("Individual") + 
   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
   scale_color_manual(values=my_colors) +
   guides(colour = guide_legend(override.aes = list(size=3.5))) +
-  theme(axis.text.x = element_text(angle=90, size=20, vjust=0.5), axis.text.y=element_text(size=20),
+  theme(axis.text.y=element_text(size=20),
         legend.key.height = unit(3, 'lines'))
 
 ## Figure 4: Stacked bar for proportion of nighttime spent in each category per species
 ## Figure 4b1 using original values
-m.categ <- melt(categ_percentage, id.vars="Species", measure.vars = c("Normothermic", "Shallow_torpor", "Transition", "Torpor"))
-m.categ$variable <- revalue(m.categ$variable, c("Shallow_torpor"="Shallow Torpor", "Torpor"="Deep Torpor"))
-ggplot(m.categ, aes(Species,value)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
+fig.4b1 <- ggplot(duration_categ_spp, aes(Species, CategDuration)) + my_theme + 
+  geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
   scale_fill_manual(values=my_colors, name="Category") +
   scale_y_continuous(labels = percent_format()) +
-  guides(colour = guide_legend(override.aes = list(size=3))) +
-  theme(legend.key.height = unit(3, 'lines'))
+  #guides(colour = guide_legend(override.aes = list(size=3))) +
+  theme(legend.position = "none")
 
 
 ## Figure 4b2: Using predicted values
-ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
+fig.4b2 <- ggplot(m.prop_dur, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
   xlab("Species") + ylab("Percentages") +
   scale_fill_manual(values=my_colors, name="Category") +
@@ -412,6 +413,8 @@ ggplot(m.prop, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable),
   guides(colour = guide_legend(override.aes = list(size=3))) +
   theme(legend.key.height = unit(3, 'lines'))
 
+## Figure 4b - arrange the two plots
+grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.75, 2.4))
 
 #### TRYING out Heterothermy Index ####
 ## HI = sqrt((sum((Tb_opt - Tb_i)^2))/n-1)
