@@ -341,46 +341,6 @@ ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) +
   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
   ylab( expression(atop(paste("Surface Temperature (", degree,"C)"))))
 
-# #library(ggeffects)
-# dfpred <- ggpredict(mod_cor, terms = c("Amb_Temp","Category", "Species"))
-# ggplot(dfpred, aes(x, predicted)) + my_theme +
-#   geom_point(data=therm_all, aes(x=Amb_Temp, y=Surf_Temp, col=Category), size=2.5,
-#              inherit.aes = F) +
-#   geom_line(aes(color=group)) +
-#   geom_ribbon(aes(ymin=conf.low, ymax=conf.high, fill=group), show.legend = F, alpha=0.15) +
-#   scale_colour_manual(values=my_colors) +
-#   scale_fill_manual(values=my_colors) +
-#   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
-#   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
-#   ggtitle("")
-# 
-# ggplot(dfpred, aes(group, predicted)) + my_theme +
-#   #geom_line() +
-#   geom_point(aes(col=facet))+
-#   geom_errorbar(aes(ymin=conf.low, ymax=conf.high, col=facet), width=.2,
-#                 position=position_dodge(0.05)) +
-#   #scale_colour_manual(values=my_colors) +
-#   #scale_fill_manual(values=my_colors) +
-#   #xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
-#   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
-#   ggtitle("")
-# 
-# dfpred2 <- ggpredict(mod_cor, terms = c("Species","Category"))
-# plot(dfpred2, add.data = T, line.size=1.5, dot.alpha=0.2) + scale_colour_manual(values=my_colors) +
-#   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) +
-#   ggtitle("") + my_theme + theme(legend.key.height =  unit(3, 'lines'))
-# 
-# 
-
-## Figure 4a: Range of max surface temperatures per individual (or per night), colored by category
-# ggplot(therm_all, aes(pasted, Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
-#   facet_grid(.~Species, scales = "free_x",space = "free_x") +
-#   ylab(Temp.lab) + xlab("Individual") + 
-#   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
-#   scale_color_manual(values=my_colors) +
-#   guides(colour = guide_legend(override.aes = list(size=3.5))) +
-#   theme(axis.text.x = element_text(angle=30, size=15, vjust=1, hjust=1), axis.text.y=element_text(size=20),
-#         legend.key.height = unit(3, 'lines'))
 
 #Fig. 4a with numeric individual IDs instead of full IDs
 fig.4a <- ggplot(therm_all, aes(as.factor(as.numeric(Indiv_numeric)), Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
@@ -415,31 +375,3 @@ fig.4b2 <- ggplot(m.prop_dur, aes(Species,predicted)) + my_theme + geom_bar(aes(
 
 ## Figure 4b - arrange the two plots
 grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.75, 2.4))
-
-#### TRYING out Heterothermy Index ####
-## HI = sqrt((sum((Tb_opt - Tb_i)^2))/n-1)
-Tb_opt <- unique(therm_all$Surf_Temp)[which.max(tabulate(match(therm_all$Surf_Temp, unique(therm_all$Surf_Temp))))] ## get mode of values
-hi_all <- as.data.frame(therm_all %>%
-  group_by(pasted) %>%
-  mutate(HI = sqrt((sum((Tb_opt - Surf_Temp)^2))/length(Surf_Temp)-1))) %>%
-  distinct(pasted, .keep_all=TRUE)
-hi_all
-
-
-ggplot(hi_all, aes(Species, HI)) + geom_boxplot() + my_theme
-
-for(i in unique(therm_all$pasted)) {
-  trial <- therm_all[therm_all$pasted==i,]
-  for(n in 1:(length(trial$Surf_Temp)-1)) {
-TTUF01df$HITb<-((39.117-TTUF01df$Tb)^2)
-
-TTUF01HI<-ddply(TTUF01df, .(Day ),summarize,
-                HIsum= sum(HITb), 
-                HIcount= length(HITb))
-
-TTUF01HI <- subset(TTUF01HI, HIcount>30)
-TTUM03HI$HI <- sqrt(TTUM03HI$HIsum/(TTUM03HI$HIcount-1))
-
-plot(TTUF01HI$Day, TTUF01HI$HI)
-  }
-}

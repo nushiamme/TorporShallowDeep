@@ -137,27 +137,4 @@ out_full$Indiv_ID <- gsub('BLHU', 'BLUH', out_full$Indiv_ID) ## Changing species
 
 out_full$pasted <- paste(out_full$Indiv_ID, "_", as.character(str_pad(out_full$Date, 4, pad = "0")), out_full$Year, sep="")
 
-
 write.csv(out_full, file = here("Data", "All_data.csv"))
-
-
-##Structuring time
-birdTime <- out_full$Time
-TimeOrder1 <- seq(from = 1900, to = 2459, by = 1)
-TimeOrder2 <- seq(from = 100, to = 559, by = 1)
-TimeOrder <- c(TimeOrder1, paste0("0", TimeOrder2))
-TimeOrder <- factor(TimeOrder, as.character(TimeOrder))
-
-birdTime <- as.factor(as.character(str_pad(birdTime, 4, pad = "0")))
-out_full$Time2 <- TimeOrder[match(birdTime,TimeOrder,nomatch=NA)]
-
-ggplot(out_full[out_full$pasted=="RIHU07_053118",], aes(Time2, Surf_Temp)) + my_theme2 +
-  geom_line(aes(group=pasted), size=1) +
-  geom_line(aes(y=Amb_Temp, group=pasted), linetype="dashed") +
-  geom_point(aes(col=Category), size=2) +
-  theme(axis.text.x = element_text(angle=90), 
-        panel.grid.major.y = element_line(colour="grey", size=0.5)) +
-  scale_y_continuous(breaks = c(5,10,13,15,20,21,22,23,24,25,26,27,28,29,30,35)) +
-  #geom_text(aes(label=Surf_Temp)) +
-  #geom_line(aes(group=Indiv_numeric, y=Amb_Temp), linetype="dashed") +
-  scale_color_manual(values=my_colors) + ylab(Temp.lab)

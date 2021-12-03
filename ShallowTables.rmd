@@ -1,7 +1,7 @@
 ---
 title: "ShallowTables"
 author: "Anusha Shankar"
-date: "7/5/2021"
+date: "12/01/2021"
 output: word_document
 ---
 
@@ -42,6 +42,7 @@ m.prop_dur$variable <- factor(m.prop_dur$variable, levels=c("Normothermic", "Sha
 
 ## This model has residual deviance >> degrees of freedom
 mod_glm_freq_sp <- glm(freq~variable*Species-1, data=m.prop_dur, family=poisson())
+mod_glm_freq_sp
 knitr::kable(summary(mod_glm_freq_sp)$tTable, digits=2)
 knitr::kable(emmeans(mod_glm_freq_sp,specs=~variable*Species), digits=2)
 # coef(mod_glm_freq_sp)
@@ -53,6 +54,7 @@ knitr::kable(emmeans(mod_glm_freq_sp,specs=~variable*Species), digits=2)
 
 ## Running  a negative binomial model, definitely the best. No overdispserion now, much lower residual variance.
 mod_glm_freq_sp_nb <- glm.nb(freq~variable*Species-1, data=m.prop_dur)
+mod_glm_freq_sp_nb
 knitr::kable(emmeans(mod_glm_freq_sp_nb,specs=~variable*Species), digits=2)
 coef(mod_glm_freq_sp_nb)
 ```

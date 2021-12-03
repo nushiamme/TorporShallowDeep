@@ -76,37 +76,41 @@ for(i in bird.folders.all) {
   }
 }
 
+# 
+# 
+# #### Don't really need all this, here onwards - old ###
+# 
+# ## Compiling all the RDS files into a single list, to then summarize the temperatures
+# all_thermal <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
+# colnames(all_thermal) <- bird.folders.all
+# all_amb <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
+# colnames(all_amb) <- bird.folders.all
+# #all_thermal <- ls()
+# 
+# ## Collating all the birds' max temps into one object, and min temps into another
+# for(i in bird.folders.all) {
+#   setwd(paste0(wd, "/", i))
+#   out<- readRDS(file=paste(i, "_summ.rds", sep=""))
+#   var1 <- out$value[out$variable=="Max"]
+#   n <- length(var1)
+#   all_thermal[[paste(i)]] <- c(var1, rep(NA,120-n))
+#   
+#   
+#   var2 <- out$value[out$variable=="Min"]
+#   n <- length(var2)
+#   all_amb[[paste(i)]] <- c(var2, rep(NA,120-n))
+# }
+# 
+# 
+# m.all_thermal <- melt(all_thermal, na.rm=T)
+# m.all_thermal$Species <- substr(m.all_thermal$variable, 1, 4) ## Making a species column
+# m.all_thermal <- dplyr::rename(m.all_thermal, c(Indiv_ID = variable, Surf_Temp = value))
+# ## Change Indiv_IDs to match latest convention names for MAHU -> RIHU and BLHU -> BLUH
+# m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU
+# m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
+# 
+# ## m.all_amb <- melt(all_amb,na.rm=T) ## If you want just ambient temperatures
 
-#### Don't really need all this, here onwards ###
 
-## Compiling all the RDS files into a single list, to then summarize the temperatures
-all_thermal <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
-colnames(all_thermal) <- bird.folders.all
-all_amb <- data.frame(matrix(ncol = length(bird.folders.all), nrow=120))
-colnames(all_amb) <- bird.folders.all
-#all_thermal <- ls()
-
-## Collating all the birds' max temps into one object, and min temps into another
-for(i in bird.folders.all) {
-  setwd(paste0(wd, "/", i))
-  out<- readRDS(file=paste(i, "_summ.rds", sep=""))
-  var1 <- out$value[out$variable=="Max"]
-  n <- length(var1)
-  all_thermal[[paste(i)]] <- c(var1, rep(NA,120-n))
-  
-  
-  var2 <- out$value[out$variable=="Min"]
-  n <- length(var2)
-  all_amb[[paste(i)]] <- c(var2, rep(NA,120-n))
-}
-
-
-m.all_thermal <- melt(all_thermal, na.rm=T)
-m.all_thermal$Species <- substr(m.all_thermal$variable, 1, 4) ## Making a species column
-m.all_thermal <- dplyr::rename(m.all_thermal, c(Indiv_ID = variable, Surf_Temp = value))
-## Change Indiv_IDs to match latest convention names for MAHU -> RIHU and BLHU -> BLUH
-m.all_thermal$Indiv_ID <- gsub('MA', 'RI', m.all_thermal$Indiv_ID) ## Changing species code for RIHU from MAHU to RIHU
-m.all_thermal$Indiv_ID <- gsub('BLHU', 'BLUH', m.all_thermal$Indiv_ID) ## Changing species code from BLHU to BLUH
-
-write.csv(m.all_thermal,file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\Thermal_maxes.csv")
-## m.all_amb <- melt(all_amb,na.rm=T) ## If you want just ambient temperatures
+## Not used in current version of the manuscript:
+# write.csv(m.all_thermal,file = "C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor\\Data\\Thermal_maxes.csv")
