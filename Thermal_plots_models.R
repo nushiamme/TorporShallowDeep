@@ -40,6 +40,7 @@ here <- here::here
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
+
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
 #setwd("C:\\Users\\nushi\\OneDrive - Cornell University\\Shallow_Torpor")
@@ -151,20 +152,11 @@ summary(mod_cor)$tTable
 
 therm_all$fit <- predict(mod_cor)
 
-## Figure 3: Plotting Ts ~ Ta with species in shapes and categories in color
-ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Category, shape=Species)) + 
-  geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
-  geom_abline(linetype='dashed') +
-  geom_point(alpha = 0.6, size=3, color='grey30') + xlab(ATemp.lab) + scale_fill_manual(values = my_colors) +
-  scale_shape_manual(values = c(21, 22, 24)) +
-  ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3, fill='black')), color = guide_legend(override.aes = list(size=2))) +
-  my_theme
-
 # ggplot(fortify(mod_cor), aes(Amb_Temp, Surf_Temp, color=Category)) +
 #   stat_summary(fun.data=mean_se, geom="pointrange") +
 #   stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
 
-#### Calculate proportion of the night spent in each thermal category ####
+#### Calculate proportion of the night spent in each thermal category - no need to run unless remaking m.prop_dur ####
 ## Measure duration in each category (in minutes)
 for(i in unique(therm_all$pasted)) {
   trial <- therm_all[therm_all$pasted==i,]
@@ -229,7 +221,7 @@ nrow(duration_categ_summ[duration_categ_summ$variable=="Transition",])
 nrow(duration_categ_summ[duration_categ_summ$variable=="Deep Torpor",])
 
 #### Write to csv ####
-write.csv(m.prop_dur, file = here("Data", "Prop_Duration_Categories.csv"))
+#write.csv(m.prop_dur, file = here("Data", "Prop_Duration_Categories.csv"))
 
 
 
@@ -312,34 +304,43 @@ for(i in single) {
 
 therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 
-## Figure 3: Surface vs ambient temperature, with one linear model fitted to each category
+## OLD Figure 3: Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
-ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=3, alpha=0.8) + my_theme +
-  scale_y_continuous(breaks = seq(0,40,5)) +
-  scale_colour_manual(values=my_colors) +
-  geom_smooth(aes(group=Category, col=Categ_Sp),method='lm') +
-  scale_shape_manual(values = c(15:18)) +
-  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
-        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
-  xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
-  ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) 
+# ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + geom_point(aes(col=Category, shape=Category), size=3, alpha=0.8) + my_theme +
+#   scale_y_continuous(breaks = seq(0,40,5)) +
+#   scale_colour_manual(values=my_colors) +
+#   geom_smooth(aes(group=Category, col=Categ_Sp),method='lm') +
+#   scale_shape_manual(values = c(15:18)) +
+#   theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
+#         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
+#   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+#   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) 
 
-## Figure 3 tweaking: Surface vs ambient temperature, with one linear model fitted to each category
+## Figure 3: Plotting Ts ~ Ta with species in shapes and categories in color
+ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Category, shape=Species)) + 
+  geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
+  geom_abline(linetype='dashed') +
+  geom_point(alpha = 0.6, size=3, color='grey30') + xlab(ATemp.lab) + scale_fill_manual(values = my_colors) +
+  scale_shape_manual(values = c(21, 22, 24)) +
+  ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3, fill='black')), color = guide_legend(override.aes = list(size=2))) +
+  my_theme2
+
+## OLD- too messy - Figure 3 each species+category gets a line : Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
 ## Plot surface vs ambient temperature
-ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + 
-  geom_point(aes(col=Indiv_ID, shape=Category), size=2.5) + my_theme2 +
-  #scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
-  scale_colour_manual(values=c(my_colors, my_gradient2)) +
-  facet_grid(.~Species) +
-  #scale_color_manual(values = c(my_colors)) +
-  geom_smooth(aes(group=Category, col=Category),method='lm') +
-  scale_shape_manual(values = c(15:18)) +
-  theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
-        axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
-  xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
-  ylab( expression(atop(paste("Surface Temperature (", degree,"C)"))))
+# ggplot(therm_all, aes(Amb_Temp, Surf_Temp)) + 
+#   geom_point(aes(col=Indiv_ID, shape=Category), size=2.5) + my_theme2 +
+#   #scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35,40)) +
+#   scale_colour_manual(values=c(my_colors, my_gradient2)) +
+#   facet_grid(.~Species) +
+#   #scale_color_manual(values = c(my_colors)) +
+#   geom_smooth(aes(group=Category, col=Category),method='lm') +
+#   scale_shape_manual(values = c(15:18)) +
+#   theme(panel.grid.major.y = element_line(colour="grey", size=0.5), axis.text.x=element_text(size=15),
+#         axis.text.y=element_text(size=15), legend.key.height = unit(1.5, 'lines')) +
+#   xlab( expression(atop(paste("Ambient Temperature (", degree,"C)")))) + 
+#   ylab( expression(atop(paste("Surface Temperature (", degree,"C)"))))
 
 
 #Fig. 4a with numeric individual IDs instead of full IDs
