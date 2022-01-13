@@ -29,6 +29,10 @@ library(stringr) ## To pad a cell with zeros (str_pad function)
 library(emmeans)
 library(lubridate)
 library(gridExtra)
+library(Cairo) ## for ggsave as eps with transparency
+setHook(packageEvent("grDevices", "onLoad"),
+        function(...) grDevices::X11.options(type='cairo'))
+options(device='x11')
 
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
@@ -40,6 +44,7 @@ here <- here::here
 categories <- read.csv(here("Data", "Category_thresholds.csv"))
 categ_percentage <- read.csv(here("Data", "Category_percentages.csv"))
 masses <- read.csv(here("Data", "Bird_masses.csv"))
+m.prop_dur <- read.csv(here("Data", "Prop_Duration_Categories.csv"))
 
 therm_all <- read.csv(here("Data", "All_data.csv"))
 
@@ -51,6 +56,9 @@ my_theme <- theme_classic(base_size = 30) +
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
 my_theme2 <- theme_classic(base_size = 15) + 
+  theme(panel.border = element_rect(colour = "black", fill=NA))
+
+my_theme3 <- theme_classic(base_size = 20) + 
   theme(panel.border = element_rect(colour = "black", fill=NA))
 
 
@@ -156,7 +164,7 @@ therm_all$fit <- predict(mod_cor)
 #   stat_summary(fun.data=mean_se, geom="pointrange") +
 #   stat_summary(aes(y=.fitted), fun.y=mean, geom="line")
 
-#### Calculate proportion of the night spent in each thermal category - no need to run unless remaking m.prop_dur ####
+#### Calculate proportion of the night spent in each thermal category ####
 ## Measure duration in each category (in minutes)
 for(i in unique(therm_all$pasted)) {
   trial <- therm_all[therm_all$pasted==i,]
@@ -220,7 +228,7 @@ nrow(duration_categ_summ[duration_categ_summ$variable=="Shallow Torpor",])
 nrow(duration_categ_summ[duration_categ_summ$variable=="Transition",])
 nrow(duration_categ_summ[duration_categ_summ$variable=="Deep Torpor",])
 
-#### Write to csv ####
+#### Write to csv - no need to run unless remaking m.prop_dur ####
 #write.csv(m.prop_dur, file = here("Data", "Prop_Duration_Categories.csv"))
 
 
@@ -255,13 +263,13 @@ plot(mod_glm_freq_sp_nb)
 ## Figure 2: Single RIHU individual's temperatures plotted over the course of a night
 ## Points were modified for clarity in Illustrator
 ## 3D surface plots were constructed in ImageJ and added on in Illustrator/powerpoint
-single <- "RIHU10_0603"
+single <- "MAHU10_0603"
 wd2 <- file.path("C:", "Users", "nushi", "OneDrive - Cornell University", "IR_2018_csv", "Data")
 for(i in single) {
-  setwd(paste0(wd2, "/", i))## Or wherever .rds files are stored
+  #setwd(paste0(wd2, "/", i))## Or wherever .rds files are stored
   
   #### Plotting ####
-  out<- readRDS(file=paste(i, "_summ.rds", sep=""))
+  out<- readRDS(file=paste(wd2, "/", i, "/", i, "_summ.rds", sep=""))
   
   ## Creating a meaningful time sequence
   birdTime <- out$Time
@@ -285,10 +293,26 @@ for(i in single) {
     scale_shape_manual(values=c(0,1,2), labels=c("Ambient", "Mean surface", "Max surface"), name="Temperature") + 
     scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35)) + 
     ylab(Temp.lab) + xlab("Hour") #+ ggtitle(out$Indiv_ID[1])
+  # print(thermplot)
+  # ggsave(plot=thermplot, filename=here("Figures", "EPS", "Figure2_graph.eps"), 
+  #        height=8, width=14, units = "in",
+  #        device = cairo_ps, fallback_resolution = 600)
+ 
+  thermplot_noLegend <- ggplot(out, aes(Time2, value)) +
+    geom_point(aes(shape=variable), size=3) + my_theme +
+    theme(axis.text.x = element_text(angle=60, size=20, vjust=0.5), panel.grid.major.y = element_line(colour="grey20", size=0.5),
+          axis.text.y=element_text(size=20), legend.key.height = unit(3, 'lines'),  plot.title = element_text(hjust = 0.5)) +
+    scale_shape_manual(values=c(0,1,2), labels=c("Ambient", "Mean surface", "Max surface"), name="Temperature", guide="none") + 
+    scale_y_continuous(breaks = c(5,10,15,20,21,22,23,24,25,26,27,28,29,30,35)) + 
+    ylab(Temp.lab) + xlab("Hour") #+ ggtitle(out$Indiv_ID[1])
   print(thermplot)
-  dev.off()
-  ggsave("Rplot_trial.pdf") ## For use in Adobe Illustrator
-  print(thermplot)
+  ggsave(plot=thermplot_noLegend, filename=here("Figures", "EPS", "Figure2_graph.eps"), 
+         height=8, width=14, units = "in",
+         device = cairo_ps, fallback_resolution = 600)
+  # 
+  # dev.off()
+  # ggsave("Rplot_trial.pdf") ## For use in Adobe Illustrator
+  # print(thermplot)
   
   ## To use just round and colored points in R, plot this
   thermplot_col <- ggplot(out, aes(Time2, value)) +
@@ -318,13 +342,16 @@ therm_all$Categ_Sp <- paste0(therm_all$Category, "_", therm_all$Species)
 #   ylab( expression(atop(paste("Surface Temperature (", degree,"C)")))) 
 
 ## Figure 3: Plotting Ts ~ Ta with species in shapes and categories in color
-ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Category, shape=Species)) + 
+fig.3 <- ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Category, shape=Species)) + 
   geom_smooth(aes(y=fit, lty=Species), method="lm", size=0.8) +
   geom_abline(linetype='dashed') +
   geom_point(alpha = 0.6, size=3, color='grey30') + xlab(ATemp.lab) + scale_fill_manual(values = my_colors) +
   scale_shape_manual(values = c(21, 22, 24)) +
   ylab(STemp.lab) + guides(shape = guide_legend(override.aes = list(size=3, fill='black')), color = guide_legend(override.aes = list(size=2))) +
-  my_theme2
+  my_theme
+ggsave(plot=fig.3, filename=here("Figures", "EPS", "Figure3.eps"), 
+       height=8, width=14, units = "in",
+       device = cairo_ps, fallback_resolution = 600)
 
 ## OLD- too messy - Figure 3 each species+category gets a line : Surface vs ambient temperature, with one linear model fitted to each category
 #therm_all$Category <- factor(therm_all$Category, levels = c("Normothermic", "Shallow Torpor", "Transition", "Deep Torpor"))
@@ -344,14 +371,18 @@ ggplot(therm_all,aes(Amb_Temp, Surf_Temp, group=interaction(Category), fill=Cate
 
 
 #Fig. 4a with numeric individual IDs instead of full IDs
-fig.4a <- ggplot(therm_all, aes(as.factor(as.numeric(Indiv_numeric)), Surf_Temp)) + my_theme + geom_point(aes(col=Category), size=2, alpha=0.8) +  
+fig.4a <- ggplot(therm_all, aes(as.factor(as.numeric(Indiv_numeric)), Surf_Temp)) + my_theme3 + 
+  geom_point(aes(col=Category), size=2, alpha=0.8) +  
   facet_grid(.~Species, scales = "free_x",space = "free_x") +
   ylab(Temp.lab) + xlab("Individual") + 
   #scale_color_manual(values = c('black','deepskyblue2', 'palegreen4', 'red')) +
   scale_color_manual(values=my_colors) +
   guides(colour = guide_legend(override.aes = list(size=3.5))) +
-  theme(axis.text.y=element_text(size=20),
-        legend.key.height = unit(3, 'lines'))
+  theme(legend.key.height = unit(3, 'lines'), axis.text.x = element_text(size=15, angle=90))
+fig.4a
+ggsave(plot=fig.4a, filename=here("Figures", "EPS", "Figure4a.eps"), 
+       height=8, width=14, units = "in", 
+       device = cairo_ps, fallback_resolution = 600)
 
 ## Figure 4: Stacked bar for proportion of nighttime spent in each category per species
 ## Figure 4b1 using original values
@@ -375,4 +406,5 @@ fig.4b2 <- ggplot(m.prop_dur, aes(Species,predicted)) + my_theme + geom_bar(aes(
   theme(legend.key.height = unit(3, 'lines'))
 
 ## Figure 4b - arrange the two plots
-grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.75, 2.4))
+fig.4b <- grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.3, 2.4))
+ggsave(plot=fig.4b, filename=here("Figures", "EPS", "Figure4b.eps"), height=8, width=14,units = "in")
