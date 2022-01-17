@@ -30,9 +30,6 @@ library(emmeans)
 library(lubridate)
 library(gridExtra)
 library(Cairo) ## for ggsave as eps with transparency
-setHook(packageEvent("grDevices", "onLoad"),
-        function(...) grDevices::X11.options(type='cairo'))
-options(device='x11')
 
 
 #### Read in files. Using here() package, so default working directory is the file that the .Rproj file is in. ####
@@ -389,7 +386,7 @@ ggsave(plot=fig.4a, filename=here("Figures", "EPS", "Figure4a.eps"),
 fig.4b1 <- ggplot(duration_categ_spp, aes(Species, CategDuration)) + my_theme + 
   geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
-  xlab("Species") + ylab("Percentages") +
+  xlab("Species") + ylab("Percent Time") +
   scale_fill_manual(values=my_colors, name="Category") +
   scale_y_continuous(labels = percent_format()) +
   #guides(colour = guide_legend(override.aes = list(size=3))) +
@@ -399,12 +396,12 @@ fig.4b1 <- ggplot(duration_categ_spp, aes(Species, CategDuration)) + my_theme +
 ## Figure 4b2: Using predicted values
 fig.4b2 <- ggplot(m.prop_dur, aes(Species,predicted)) + my_theme + geom_bar(aes(fill=variable), position = "fill", stat="identity") +
   #facet_grid(.~Species, scales = "free_x",space = "free_x") +
-  xlab("Species") + ylab("Percentages") +
+  xlab("Species") + ylab("Percent Time") +
   scale_fill_manual(values=my_colors, name="Category") +
   scale_y_continuous(labels = percent_format()) +
   guides(colour = guide_legend(override.aes = list(size=3))) +
   theme(legend.key.height = unit(3, 'lines'))
 
 ## Figure 4b - arrange the two plots
-fig.4b <- grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.3, 2.4))
+fig.4b <- grid.arrange(fig.4b1, fig.4b2, nrow=1, ncol=2, widths = c(1.4, 2.4))
 ggsave(plot=fig.4b, filename=here("Figures", "EPS", "Figure4b.eps"), height=8, width=14,units = "in")
